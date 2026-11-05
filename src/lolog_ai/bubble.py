@@ -170,3 +170,118 @@ def draw_dialogue(image: Image.Image, bubbles: list[Bubble], lines_per_bubble: l
             draw.text((bubble.cx, y + line_h / 2), line, font=font, fill=color, anchor="mm")
             y += line_h
     return out
+
+
+# ── 말풍선을 코드로 그리기 (팀 명세 TR-07: 그림 모델은 글자·말풍선 없이 그림) ──
+
+POSITION_X = {"left": 0.25, "center": 0.5, "right": 0.75}
+
+
+@dataclass
+class Placed:
+    """코드로 그린 말풍선 하나의 자리."""
+    x0: int
+    y0: int
+    x1: int
+    y1: int
+    speaker_x: int
+    cost: float
+
+
+def _busy_map(image: Image.Image) -> np.ndarray:
+    """그림이 복잡한 곳(선·경계가 많은 곳)일수록 큰 값. 말풍선이 인물을 가리지 않게 피할 때 쓴다."""
+    from PIL import ImageFilter
+    g = image.convert("L").filter(ImageFilter.FIND_EDGES).filter(ImageFilter.BoxBlur(6))
+    return np.asarray(g, dtype=np.float32) / 255.0
+
+
+def layout_text(text: str, font: ImageFont.FreeTypeFont, max_w: int, spacing: float = 1.2,
+                target_ratio: float = 1.8):
+    """고정 글자 크기로 줄바꿈한다. 줄 너비를 바꿔 가며 글 상자가 target_ratio(가로/세로)에
+    가장 가까운 것을 골라 말풍선이 너무 납작하거나 길쭉하지 않게 한다."""
+    best = None
+    for w_try in range(max_w, font.size * 3 - 1, -font.size // 2):
+        lines = _wrap(text, font, w_try)
+        w = int(max(font.getlength(l) for l in lines))
+        h = int(len(lines) * font.size * spacing)
+        score = abs(w / h - target_ratio)
+        if best is None or score < best[0]:
+            best = (score, lines, w, h)
+    return best[1], best[2], best[3]
+
+
+def bubble_size(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> tuple[int, int]:
+    _, tw, th = layout_text(text, font, max_w)
+    return int(tw * 1.42 + 36), int(th * 1.42 + 30)  # 글 상자를 감싸는 타원
+
+
+def place_bubbles(image: Image.Image, dialogue: list[dict], positions: dict[str, str],
+                  font_path: Path = DEFAULT_FONT, font_size: int = 32,
+                  max_text_w: float = 0.42, margin: int = 12) -> list[Placed]:
+    """대사마다 말풍선 자리를 고른다.
+
+    - 말풍선 크기는 대사 길이로 정한다(모든 컷에 같은 글자 크기).
+    - 화자 위치(left/center/right) 위쪽에서, 그림이 덜 복잡하고 위쪽인 곳을 고른다.
+    - 읽는 순서(왼쪽→오른쪽, 위→아래)를 지킨다: 다음 말풍선은 앞 말풍선보다 오른쪽이거나 아래.
+    - 말풍선끼리 겹치지 않는다.
+    """
+    W, H = image.size
+    busy = _busy_map(image)
+    font = ImageFont.truetype(str(font_path), font_size)
+    placed: list[Placed] = []
+    for d in dialogue:
+        bw, bh = bubble_size(d["text"], font, int(W * max_text_w))
+        sx = int(POSITION_X[positions[d["speaker"]]] * W)
+        best = None
+        for y0 in range(margin, int(H * 0.6) - bh + 1, 8):
+            for x0 in range(margin, W - bw - margin + 1, 8):
+                x1, y1 = x0 + bw, y0 + bh
+                if any(x0 < p.x1 + 6 and p.x0 - 6 < x1 and y0 < p.y1 + 6 and p.y0 - 6 < y1 for p in placed):
+                    continue
+                if placed:
+                    prev = placed[-1]
+                    if not (x0 >= (prev.x0 + prev.x1) / 2 and y0 >= prev.y0 - 20) and y0 < prev.y1 - 10:
+                        continue  # 읽는 순서가 뒤집히는 자리
+                cost = (busy[y0:y1, x0:x1].mean() * 4  # 인물·물건을 덜 가리게
+                        + abs((x0 + x1) / 2 - sx) / W  # 화자 머리 위에 가깝게
+                        + y0 / H * 0.5)  # 만화처럼 위쪽에
+                if best is None or cost < best.cost:
+                    best = Placed(x0, y0, x1, y1, sx, cost)
+        if best is None:  # 자리가 없으면 맨 위 가운데에 겹쳐서라도 넣는다
+            x0 = max(margin, min(W - bw - margin, sx - bw // 2))
+            best = Placed(x0, margin, x0 + bw, margin + bh, sx, float("inf"))
+        placed.append(best)
+    return placed
+
+
+def draw_bubbles(image: Image.Image, dialogue: list[dict], placed: list[Placed],
+                 font_path: Path = DEFAULT_FONT, font_size: int = 32, max_text_w: float = 0.42,
+                 stroke: int = 3) -> Image.Image:
+    """흰 타원 말풍선과 화자 쪽 꼬리를 그리고 대사를 넣는다.
+    타원과 꼬리를 한 마스크로 합친 뒤 바깥 테두리만 검게 칠해 이음매 없이 그린다."""
+    from PIL import ImageFilter
+    out = image.convert("RGB").copy()
+    W, H = out.size
+    font = ImageFont.truetype(str(font_path), font_size)
+    for d, p in zip(dialogue, placed):
+        bw, bh = p.x1 - p.x0, p.y1 - p.y0
+        cx, cy = (p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2
+        base_x = min(max(p.speaker_x, p.x0 + bw * 0.3), p.x0 + bw * 0.7)
+        base_y = cy + bh * 0.3
+        tip = (base_x + (p.speaker_x - base_x) * 0.5, min(H - 6, p.y1 + max(28, H * 0.06)))
+        half = max(10, bw * 0.06)
+        mask = Image.new("L", (W, H), 0)
+        md = ImageDraw.Draw(mask)
+        md.ellipse((p.x0, p.y0, p.x1, p.y1), fill=255)
+        md.polygon([(base_x - half, base_y), (base_x + half, base_y), tip], fill=255)
+        ring = mask.filter(ImageFilter.MaxFilter(stroke * 2 + 1))
+        out.paste((0, 0, 0), mask=ring)
+        out.paste((255, 255, 255), mask=mask)
+        draw = ImageDraw.Draw(out)
+        lines, _, th = layout_text(d["text"], font, int(W * max_text_w))
+        line_h = th / len(lines)
+        y = cy - th / 2
+        for line in lines:
+            draw.text((cx, y + line_h / 2), line, font=font, fill="black", anchor="mm")
+            y += line_h
+    return out

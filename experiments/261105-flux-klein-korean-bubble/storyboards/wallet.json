@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "comicId": 0,
+  "cardId": 0,
+  "layout": "vertical4",
+  "place": {
+    "text": "편의점 앞",
+    "prompt": "in front of a convenience store at night with bright shop windows"
+  },
+  "characters": [
+    { "key": "A", "name": null, "appearance": "a tired male student with messy black hair, glasses and a gray hoodie" },
+    { "key": "B", "name": null, "appearance": "a young woman with a short bob haircut and a yellow jacket" },
+    { "key": "C", "name": null, "appearance": "a tall young man with curly brown hair and a green shirt" }
+  ],
+  "panels": [
+    {
+      "index": 1,
+      "beat": "buildup",
+      "scene": "The student stands at the convenience store counter, searching his empty pockets in panic.",
+      "cast": [{ "key": "A", "position": "center", "expression": "panicked" }],
+      "dialogue": [{ "speaker": "A", "text": "어? 지갑 어디 갔지" }]
+    },
+    {
+      "index": 2,
+      "beat": "development",
+      "scene": "The student runs along a night street toward his home, out of breath.",
+      "cast": [{ "key": "A", "position": "center", "expression": "exhausted" }],
+      "dialogue": []
+    },
+    {
+      "index": 3,
+      "beat": "punchline",
+      "scene": "The student stands in front of the convenience store holding his wallet, the shop door has a closed sign.",
+      "cast": [
+        { "key": "A", "position": "left", "expression": "shocked" },
+        { "key": "B", "position": "right", "expression": "laughing" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "지갑 가지러 갔다 왔더니 문 닫았어" },
+        { "speaker": "B", "text": "ㅋㅋㅋ 진짜?" }
+      ]
+    },
+    {
+      "index": 4,
+      "beat": "reaction",
+      "scene": "Three friends on a street at night, the woman and the tall man laughing at the student who sulks.",
+      "cast": [
+        { "key": "B", "position": "left", "expression": "laughing" },
+        { "key": "A", "position": "center", "expression": "sulking" },
+        { "key": "C", "position": "right", "expression": "laughing" }
+      ],
+      "dialogue": [
+        { "speaker": "C", "text": "그래서 결국 아무것도 못 샀어?" },
+        { "speaker": "A", "text": "그만 웃어" }
+      ]
+    }
+  ]
+}

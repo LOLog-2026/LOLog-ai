@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "comicId": 35,
+  "cardId": 12,
+  "layout": "vertical4",
+  "place": {
+    "text": "집 부엌",
+    "prompt": "a small apartment kitchen with a white fridge"
+  },
+  "characters": [
+    {
+      "key": "A",
+      "name": "지은",
+      "appearance": "a young woman with long brown hair, pink sweater"
+    },
+    {
+      "key": "B",
+      "name": null,
+      "appearance": "a young man with short black hair, blue t-shirt"
+    }
+  ],
+  "panels": [
+    {
+      "index": 1,
+      "beat": "buildup",
+      "scene": "The woman opens the fridge and finds a strawberry cake inside, eyes sparkling.",
+      "cast": [
+        { "key": "A", "position": "right", "expression": "excited" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "오 케이크다", "sourceLineIds": [3] }
+      ]
+    },
+    {
+      "index": 2,
+      "beat": "development",
+      "scene": "The woman sits at the table eating the whole cake happily with a fork.",
+      "cast": [
+        { "key": "A", "position": "center", "expression": "happy" }
+      ],
+      "dialogue": [
+        { "speaker": "A", "text": "한 입만 먹어야지", "sourceLineIds": [4] }
+      ]
+    },
+    {
+      "index": 3,
+      "beat": "punchline",
+      "scene": "The man opens the fridge and sees an empty plate with crumbs, shocked.",
+      "cast": [
+        { "key": "B", "position": "left", "expression": "shocked" },
+        { "key": "A", "position": "right", "expression": "nervous" }
+      ],
+      "dialogue": [
+        { "speaker": "B", "text": "내 케이크 어디 갔어?", "sourceLineIds": [7] },
+        { "speaker": "A", "text": "글쎄...", "sourceLineIds": [8] }
+      ]
+    },
+    {
+      "index": 4,
+      "beat": "reaction",
+      "scene": "The woman looks away whistling with cream on her cheek while the man glares at her.",
+      "cast": [
+        { "key": "B", "position": "left", "expression": "angry" },
+        { "key": "A", "position": "right", "expression": "innocent" }
+      ],
+      "dialogue": [
+        { "speaker": "B", "text": "볼에 크림 묻었거든", "sourceLineIds": [9] }
+      ]
+    }
+  ]
+}
