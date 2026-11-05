@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 데이터 (원본·가공 데이터는 git에 올리지 않는다)
+data/*
+!data/README.md
+
+# 모델 가중치·실험 산출물
+checkpoints/
+outputs/
+runs/
+wandb/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.engine
+
+# 비밀 정보
+.env
+
+# 에디터·OS
+.vscode/
+.idea/
+.DS_Store
