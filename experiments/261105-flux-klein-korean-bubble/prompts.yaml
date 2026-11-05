@@ -1,0 +1,91 @@
+# FLUX.2 klein 한글 말풍선 테스트 프롬프트
+# length: short(≤5자) / medium(6–15자) / long(16자 이상), 공백 제외 글자 수 기준
+# bubbles: 말풍선에 들어갈 대사(순서대로). 생성 결과를 OCR·눈으로 이 값과 비교한다.
+
+style: >-
+  Korean webtoon style comic panel, clean black line art, flat pastel colors,
+  white background, simple and cute characters
+
+# {scene}과 {bubbles}가 채워진다. 대사는 큰따옴표로 감싸 정확히 그 글자를 쓰도록 요청한다.
+template: >-
+  {style}. {scene}. {bubbles}
+  The Korean text in the speech bubbles must be written exactly as given, clearly legible.
+
+cases:
+  # ── 말풍선 1개 ──
+  - id: s1
+    length: short
+    scene: A young woman holding her stomach in front of a fridge
+    bubbles: ["배고파"]
+  - id: s2
+    length: short
+    scene: A surprised young man with wide eyes looking at his phone
+    bubbles: ["헐 대박"]
+  - id: s3
+    length: short
+    scene: A girl raising one eyebrow suspiciously
+    bubbles: ["진짜?"]
+  - id: m1
+    length: medium
+    scene: Two friends sitting at a cafe table, one is speaking
+    bubbles: ["오늘 점심 뭐 먹지?"]
+  - id: m2
+    length: medium
+    scene: A boy pointing at his friend and laughing
+    bubbles: ["너 어제 그거 봤어?"]
+  - id: m3
+    length: medium
+    scene: A woman crossing her arms with a smug face
+    bubbles: ["내가 그럴 줄 알았어"]
+  - id: l1
+    length: long
+    scene: A frustrated man waving his hands while explaining
+    bubbles: ["아니 그러니까 내 말은 그게 아니라고"]
+  - id: l2
+    length: long
+    scene: A tired student standing in front of a convenience store at night
+    bubbles: ["편의점 갔다가 지갑 놓고 와서 다시 갔어"]
+
+  # ── 말풍선 2개 (대화) ──
+  - id: d1
+    length: medium
+    scene: Two friends facing each other, the left one is giggling, the right one looks confused
+    bubbles: ["너 왜 웃어?", "아무것도 아니야"]
+  - id: d2
+    length: short
+    scene: A mother and her son in a kitchen
+    bubbles: ["밥 먹었어?", "아직"]
+
+  # ── 대조 실험 ──
+  # e1: 영어는 그리는지 (글자 자체 문제인지 한글 문제인지 구분)
+  - id: e1
+    raw: true  # 템플릿의 한글 지시 문장 없이
+    length: control_en
+    scene: A young woman holding her stomach in front of a fridge
+    bubbles: ["I'm so hungry"]
+  # b1, b2: 빈 말풍선 (대사를 코드로 합성하는 대안용)
+  - id: b1
+    raw: true  # 템플릿의 한글 지시 문장 없이
+    length: control_empty
+    scene: A young woman holding her stomach in front of a fridge
+    bubbles: []
+    bubble_text: There is one large empty white speech bubble with no text inside, pointing at her.
+  - id: b2
+    raw: true  # 템플릿의 한글 지시 문장 없이
+    length: control_empty
+    scene: Two friends facing each other, the left one is giggling, the right one looks confused
+    bubbles: []
+    bubble_text: >-
+      There are two large empty white speech bubbles with no text inside,
+      one pointing at each friend.
+
+# 한 장에 4컷을 그리는 경우 (컷별로 따로 그리는 방식과 비교)
+four_panel:
+  - id: f1
+    scene: >-
+      A four-panel vertical comic strip (2x2 grid) with panel borders.
+      Panel 1: a girl looks at a cake in the fridge.
+      Panel 2: she eats the cake happily.
+      Panel 3: her brother opens the empty fridge, shocked.
+      Panel 4: the girl whistles, pretending not to know.
+    bubbles: ["맛있겠다", "냠냠", "내 케이크!", "난 몰라~"]
