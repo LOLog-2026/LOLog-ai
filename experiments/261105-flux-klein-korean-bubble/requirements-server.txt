@@ -19,6 +19,7 @@ diffusers==0.42.1
 dill==0.4.1
 executing==2.3.0
 filelock==4.2.7
+flatbuffers==25.12.19
 frozenlist==1.8.0
 fsspec==2026.7.0
 h11==0.16.0
@@ -60,6 +61,7 @@ nvidia-nccl-cu13==2.30.7
 nvidia-nvjitlink==13.4.92
 nvidia-nvshmem-cu13==3.4.5
 nvidia-nvtx==13.0.85
+onnxruntime==1.30.0
 packaging==26.3
 pandas==3.1.0
 parso==0.8.7
@@ -69,6 +71,7 @@ pillow==13.0.0
 platformdirs==4.14.4
 prompt-toolkit==3.0.53
 propcache==0.5.4
+protobuf==7.36.2
 psutil==7.2.2
 ptyprocess==0.7.0
 pure-eval==0.2.4

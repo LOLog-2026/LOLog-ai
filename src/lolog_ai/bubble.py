@@ -186,6 +186,26 @@ class Placed:
     y1: int
     speaker_x: int
     cost: float
+    target: tuple[int, int] | None = None  # 꼬리가 향할 곳(화자 얼굴). 없으면 화자 위치 비율로
+
+
+def _ambiguity(box: tuple, face: tuple | None, others: list[tuple]) -> float:
+    """말풍선이 화자보다 다른 인물 얼굴에 더 가까우면 벌점. 거리는 말풍선 아래 가운데 → 얼굴 가운데."""
+    if not face or not others:
+        return 0.0
+    bx, by = (box[0] + box[2]) / 2, box[3]
+
+    def dist(f: tuple) -> float:
+        return ((bx - (f[0] + f[2]) / 2) ** 2 + (by - (f[1] + f[3]) / 2) ** 2) ** 0.5
+
+    return 2.0 if min(dist(f) for f in others) < dist(face) else 0.0
+
+
+def _overlap(a: tuple, b: tuple) -> float:
+    """a와 b가 겹치는 넓이 / b의 넓이."""
+    w = min(a[2], b[2]) - max(a[0], b[0])
+    h = min(a[3], b[3]) - max(a[1], b[1])
+    return max(w, 0) * max(h, 0) / max(1, (b[2] - b[0]) * (b[3] - b[1]))
 
 
 def _busy_map(image: Image.Image) -> np.ndarray:
@@ -217,8 +237,13 @@ def bubble_size(text: str, font: ImageFont.FreeTypeFont, max_w: int) -> tuple[in
 
 def place_bubbles(image: Image.Image, dialogue: list[dict], positions: dict[str, str],
                   font_path: Path = DEFAULT_FONT, font_size: int = 32,
-                  max_text_w: float = 0.42, margin: int = 12) -> list[Placed]:
+                  max_text_w: float = 0.42, margin: int = 12,
+                  faces: list[tuple[int, int, int, int]] | None = None,
+                  speaker_faces: dict[str, tuple[int, int, int, int]] | None = None) -> list[Placed]:
     """대사마다 말풍선 자리를 고른다.
+
+    - faces(얼굴 상자)가 있으면 얼굴을 가리는 자리는 피한다(조금 넓혀서 본다).
+    - speaker_faces(화자 key → 얼굴)가 있으면 화자 얼굴 가까이에 두고 꼬리를 얼굴로 향하게 한다.
 
     - 말풍선 크기는 대사 길이로 정한다(모든 컷에 같은 글자 크기).
     - 화자 위치(left/center/right) 위쪽에서, 그림이 덜 복잡하고 위쪽인 곳을 고른다.
@@ -229,11 +254,17 @@ def place_bubbles(image: Image.Image, dialogue: list[dict], positions: dict[str,
     busy = _busy_map(image)
     font = ImageFont.truetype(str(font_path), font_size)
     placed: list[Placed] = []
+    pad = [(f, (f[2] - f[0]) * 0.15, (f[3] - f[1]) * 0.15) for f in faces or []]
+    keep_out = [(f[0] - px, f[1] - py, f[2] + px, f[3] + py) for f, px, py in pad]
     for d in dialogue:
         bw, bh = bubble_size(d["text"], font, int(W * max_text_w))
-        sx = int(POSITION_X[positions[d["speaker"]]] * W)
+        face = (speaker_faces or {}).get(d["speaker"])
+        others = [f for k, f in (speaker_faces or {}).items() if k != d["speaker"]]
+        # 말하지 않은 인물의 몸: 얼굴 아래로 얼굴 너비의 2배 정도
+        other_bodies = [(f[0] - (f[2] - f[0]) // 2, f[3], f[2] + (f[2] - f[0]) // 2, H) for f in others]
+        sx = (face[0] + face[2]) // 2 if face else int(POSITION_X[positions[d["speaker"]]] * W)
         best = None
-        for y0 in range(margin, int(H * 0.6) - bh + 1, 8):
+        for y0 in range(margin, int(H * 0.7) - bh + 1, 8):
             for x0 in range(margin, W - bw - margin + 1, 8):
                 x1, y1 = x0 + bw, y0 + bh
                 if any(x0 < p.x1 + 6 and p.x0 - 6 < x1 and y0 < p.y1 + 6 and p.y0 - 6 < y1 for p in placed):
@@ -244,12 +275,18 @@ def place_bubbles(image: Image.Image, dialogue: list[dict], positions: dict[str,
                         continue  # 읽는 순서가 뒤집히는 자리
                 cost = (busy[y0:y1, x0:x1].mean() * 4  # 인물·물건을 덜 가리게
                         + abs((x0 + x1) / 2 - sx) / W  # 화자 머리 위에 가깝게
-                        + y0 / H * 0.5)  # 만화처럼 위쪽에
+                        + y0 / H * 0.5  # 만화처럼 위쪽에
+                        + sum(_overlap((x0, y0, x1, y1), k) for k in keep_out) * 20  # 얼굴 가림
+                        + _ambiguity((x0, y0, x1, y1), face, others)  # 다른 사람 말처럼 보임
+                        + sum(_overlap(b, (x0, y0, x1, y1)) for b in other_bodies) * 4)  # 남의 몸 위
                 if best is None or cost < best.cost:
                     best = Placed(x0, y0, x1, y1, sx, cost)
         if best is None:  # 자리가 없으면 맨 위 가운데에 겹쳐서라도 넣는다
             x0 = max(margin, min(W - bw - margin, sx - bw // 2))
             best = Placed(x0, margin, x0 + bw, margin + bh, sx, float("inf"))
+        if face:
+            fcx, fcy = (face[0] + face[2]) // 2, (face[1] + face[3]) // 2
+            best.target = (fcx, face[1]) if best.y1 <= face[1] else (fcx, fcy)
         placed.append(best)
     return placed
 
@@ -268,7 +305,14 @@ def draw_bubbles(image: Image.Image, dialogue: list[dict], placed: list[Placed],
         cx, cy = (p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2
         base_x = min(max(p.speaker_x, p.x0 + bw * 0.3), p.x0 + bw * 0.7)
         base_y = cy + bh * 0.3
-        tip = (base_x + (p.speaker_x - base_x) * 0.5, min(H - 6, p.y1 + max(28, H * 0.06)))
+        if p.target:  # 화자 얼굴 쪽으로, 얼굴에 닿기 전에 멈춤
+            tx, ty = p.target
+            dx, dy = tx - base_x, ty - base_y
+            dist = max(1.0, (dx * dx + dy * dy) ** 0.5)
+            reach = min(dist - 12, (p.y1 - base_y) + max(36, H * 0.08))
+            tip = (base_x + dx / dist * reach, base_y + dy / dist * reach)
+        else:
+            tip = (base_x + (p.speaker_x - base_x) * 0.5, min(H - 6, p.y1 + max(28, H * 0.06)))
         half = max(10, bw * 0.06)
         mask = Image.new("L", (W, H), 0)
         md = ImageDraw.Draw(mask)
