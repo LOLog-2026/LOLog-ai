@@ -26,6 +26,10 @@ LoRA 학습 전에, FLUX.2 klein이 아키텍처 요구대로 **말풍선과 한
   - 구성: 한 장에 4컷 / 컷별 1장
 - 방법: 추론만 (LoRA 없음)
 - 환경: 3090 서버(품질 기준) → Orin Nano(메모리·속도)
+  - 3090 서버는 PyPI가 막혀 있어 카카오 미러로 따로 설치함(레포 `uv.lock`과 버전이 다름)
+  - torch 2.14.1+cu130, diffusers 0.42.1, transformers 5.19.0 — 전체 목록 `requirements-server.txt`
+  - 재현: `uv venv --python 3.12 .venv && UV_DEFAULT_INDEX=https://mirror.kakao.com/pypi/simple uv pip install -r requirements-server.txt`
+  - 실행은 `uv run --no-sync` 또는 `.venv/bin/python` (그냥 `uv run`은 PyPI에 접속하려다 실패함)
 
 ## 측정 항목
 
