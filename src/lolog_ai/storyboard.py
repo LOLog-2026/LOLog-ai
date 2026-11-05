@@ -18,6 +18,10 @@ from typing import Any
 
 BEATS = ["buildup", "development", "punchline", "reaction"]
 MAX_BUBBLES = 2
+# 인물이 이만큼 이상인 컷은 말풍선 1개까지. 3명 + 대사 2개면 두 번째 말풍선이 다른 인물 옆으로
+# 밀려 그 사람 말처럼 보였다(6장 중 4장). 대사 1개면 6/6 화자가 분명했다(#6, #10)
+CROWDED_CAST = 3
+MAX_BUBBLES_CROWDED = 1
 MAX_TEXT = 25  # 말풍선 대사 최대 글자 수(공백 포함). 세로 4칸 실측 최소 27자에서 여유를 둠(#6)
 KEY_RE = re.compile(r"^[A-Z]$")
 # 그림 설명에 섞이면 안 되는 내부 이름: "화자1", "speaker A", "Speaker 2" 등
@@ -76,6 +80,9 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
         dialogue = p.get("dialogue") or []
         if len(dialogue) > MAX_BUBBLES:
             errs.append(f"{where}.dialogue는 최대 {MAX_BUBBLES}개")
+        elif len(cast) >= CROWDED_CAST and len(dialogue) > MAX_BUBBLES_CROWDED:
+            errs.append(f"{where}: 인물이 {len(cast)}명인 컷은 dialogue 최대 {MAX_BUBBLES_CROWDED}개"
+                        " (말풍선이 다른 인물 말처럼 보임. 대사를 다른 컷으로 옮기거나 인물을 줄임)")
         for j, d in enumerate(dialogue):
             text = d.get("text", "")
             if d.get("speaker") not in cast_keys:
