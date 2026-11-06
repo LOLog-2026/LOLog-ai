@@ -1,0 +1,86 @@
+{
+  "args": {
+    "tag": "gguf-q4",
+    "storyboard": "experiments/261105-flux-klein-korean-bubble/storyboards/cake.json",
+    "out": "outputs/jetson-bench",
+    "seeds": "[0, 1, 2]",
+    "panel_size": "768",
+    "steps": "4",
+    "font_size": "36",
+    "quant": "gguf",
+    "te_quant": "nf4",
+    "gguf": "/home/minju/.cache/lolog/gguf/flux-2-klein-4b-Q4_K_M.gguf"
+  },
+  "env": {
+    "host": "aip-2",
+    "machine": "aarch64",
+    "gpu": "Orin",
+    "l4t": "# R39 (release), REVISION: 2.1, GCID: 46758480, BOARD: generic, EABI: aarch64, DATE: Fri Aug  7 05:54:22 AM UTC 2026",
+    "nvpmodel": "NV Power Mode: 15W\n0",
+    "packages": {
+      "torch": "2.15.0",
+      "diffusers": "0.42.0.dev0",
+      "transformers": "5.22.1",
+      "onnxruntime": "1.31.1",
+      "torchao": "0.18.0",
+      "bitsandbytes": "0.50.2",
+      "gguf": "0.19.0"
+    }
+  },
+  "baseline_ram_mb": 1329,
+  "baseline_swap_mb": 0,
+  "status": "ok",
+  "stages": {
+    "te_load": {
+      "sec": 97.511,
+      "ram_peak_mb": 4330,
+      "swap_peak_mb": 8,
+      "torch_peak_mb": 2754
+    },
+    "te_encode": {
+      "sec": 8.699,
+      "ram_peak_mb": 5135,
+      "swap_peak_mb": 8,
+      "torch_peak_mb": 2999
+    },
+    "te_free": {
+      "sec": 0.879,
+      "ram_peak_mb": 5095,
+      "swap_peak_mb": 8,
+      "torch_peak_mb": 2750
+    },
+    "dit_load": {
+      "sec": 33.632,
+      "ram_peak_mb": 5199,
+      "swap_peak_mb": 9,
+      "torch_peak_mb": 2694
+    },
+    "warmup": {
+      "sec": 45.479,
+      "ram_peak_mb": 7149,
+      "swap_peak_mb": 112,
+      "torch_peak_mb": 4065
+    },
+    "comic_s0": {
+      "sec": 136.211,
+      "ram_peak_mb": 7078,
+      "swap_peak_mb": 112,
+      "torch_peak_mb": 4065
+    },
+    "comic_s1": {
+      "sec": 135.778,
+      "ram_peak_mb": 7068,
+      "swap_peak_mb": 112,
+      "torch_peak_mb": 4065
+    },
+    "comic_s2": {
+      "sec": 135.835,
+      "ram_peak_mb": 7067,
+      "swap_peak_mb": 112,
+      "torch_peak_mb": 4065
+    }
+  },
+  "ram_peak_mb": 7149,
+  "swap_peak_mb": 112,
+  "comic_sec_median": 135.835
+}
