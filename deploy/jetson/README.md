@@ -31,8 +31,9 @@ sudo systemctl set-default multi-user.target
 sudo nvpmodel -m 0 && sudo jetson_clocks
 # 스왑 8GB (/swapfile)는 측정 때 만든 것을 그대로 둔다. 없으면 만들고 /etc/fstab에 추가
 
-sudo apt install -y autossh python3-venv
+sudo apt install -y autossh python3-venv nano
 sudo useradd --system --create-home --home-dir /opt/lolog --shell /usr/sbin/nologin lolog
+sudo usermod -aG video,render lolog   # GPU 권한. 없으면 서비스가 CUDA를 못 찾고 CPU로 돎
 sudo chmod 755 /opt/lolog   # 코드·모델만 있는 곳이라 읽기는 열어 둠(비밀값은 /etc/lolog)
 sudo mkdir -p /etc/lolog && sudo chown root:lolog /etc/lolog && sudo chmod 750 /etc/lolog
 
@@ -42,8 +43,17 @@ sudo -u lolog git clone https://github.com/LOLog-2026/LOLog-ai /opt/lolog/LOLog-
 
 파이썬 환경
 - 1호: `sudo -u lolog python3 -m venv /opt/lolog/venv && sudo -u lolog /opt/lolog/venv/bin/pip install "redis>=5"`
-- 2호: FLUX 측정 때 쓴 venv(torch, diffusers 등)를 쓴다. `redis`만 더 설치하고 `/opt/lolog/venv`로 링크한다.
-  `sudo ln -s <측정 venv 경로> /opt/lolog/venv` (lolog 사용자가 읽을 수 있어야 함)
+- 2호: FLUX 측정 venv(torch, diffusers)를 같이 쓰는 lolog 전용 venv를 만든다. 측정 venv를 그대로 링크하면
+  거기 개발 모드로 설치된 예전 `lolog_ai`가 `PYTHONPATH`보다 먼저 잡혀 `No module named 'lolog_ai.worker'`가 난다.
+  ```bash
+  ~/LOLog-ai/.venv/bin/python -m pip install "redis>=5" 2>/dev/null || (cd ~/LOLog-ai && uv pip install "redis>=5")
+  sudo chmod 711 ~                                        # lolog가 측정 venv를 읽도록 지나가기만 허용
+  PY=$(readlink -f ~/LOLog-ai/.venv/bin/python)
+  SP=$(~/LOLog-ai/.venv/bin/python -c "import sysconfig;print(sysconfig.get_paths()['purelib'])")
+  cd /opt/lolog && sudo -u lolog $PY -m venv --without-pip /opt/lolog/venv
+  NEWSP=$(sudo -u lolog /opt/lolog/venv/bin/python -c "import site;print(site.getsitepackages()[0])")
+  echo "$SP" | sudo -u lolog tee $NEWSP/flux-venv.pth
+  ```
 
 ## 1. SSH 터널 (두 대 모두)
 
@@ -120,8 +130,8 @@ sudo chown -R lolog:lolog /opt/lolog/hf-cache /opt/lolog/.cache /opt/lolog/model
 ## 4. 켜기
 
 ```bash
-cd /opt/lolog/LOLog-ai/deploy/jetson
-sudo cp systemd/*.service /etc/systemd/system/ && sudo systemctl daemon-reload
+# 폴더가 lolog 전용이라 * 는 sudo 안에서 풀어야 한다
+sudo sh -c 'cp /opt/lolog/LOLog-ai/deploy/jetson/systemd/*.service /etc/systemd/system/' && sudo systemctl daemon-reload
 
 # 1호
 sudo systemctl enable --now lolog-tunnel lolog-llm lolog-worker@detect
@@ -135,7 +145,7 @@ sudo systemctl enable --now lolog-tunnel lolog-worker@comic
 systemctl status lolog-tunnel lolog-llm lolog-worker@detect
 journalctl -u lolog-worker@detect -f            # "시작: detect · lolog:detect · 컨슈머 jetson-1"
 nc -z localhost 6379 && nc -z localhost 18080 && echo 터널OK
-curl -s http://<1호 LAN 주소>:8000/health          # {"status":"ok"}
+curl -s http://100.98.23.5:8000/health             # {"status":"ok"} (키 없이도 health는 열림)
 sudo reboot   # 다시 켜진 뒤 위 status가 모두 active면 끝
 ```
 
@@ -143,6 +153,20 @@ sudo reboot   # 다시 켜진 뒤 위 status가 모두 active면 끝
 ```bash
 redis-cli -a <비밀번호> XADD lolog:detect '*' payload '{"jobId":1,"recordingId":1,"partNo":1,"isLast":true,"sentences":[{"startMs":0,"endMs":2000,"text":"야 너 어제 그거 봤어"}]}'
 ```
+
+## 코드 올리기 (main에 머지된 뒤)
+
+젯슨은 Tailscale 안에만 있어 GitHub Actions로 배포하지 않는다. 각 젯슨에서 직접 받는다.
+```bash
+# 처음 한 번: 손으로 복사해 둔 폴더를 git 저장소로 바꾼다
+sudo mv /opt/lolog/LOLog-ai /opt/lolog/LOLog-ai.old
+sudo -u lolog git clone -b main https://github.com/LOLog-2026/LOLog-ai /opt/lolog/LOLog-ai
+# 그 뒤로는
+sudo -u lolog git -C /opt/lolog/LOLog-ai pull --ff-only
+sudo systemctl restart lolog-worker@detect   # 2호는 lolog-worker@comic
+```
+- 서비스 파일(`systemd/`)이 바뀌었으면 4장의 복사와 `daemon-reload`도 다시 한다
+- 끝까지 되는지 확인은 `RUNBOOK.md`의 E
 
 ## 로그 규칙
 

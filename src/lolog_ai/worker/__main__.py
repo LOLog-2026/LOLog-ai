@@ -121,7 +121,15 @@ class Worker:
     def run(self) -> None:
         log.info("LLM 서버 기다리는 중: %s", self.cfg.llm_base_url)  # 2호도 콘티에 1호 LLM을 씀
         self.llm.wait_ready()
-        self.ensure_group()
+        while not self.stopping:  # 서버 Redis가 아직 없거나 터널이 끊겼으면 기다린다(로그는 30초에 한 번)
+            try:
+                self.ensure_group()
+                break
+            except redis.ConnectionError as e:
+                log.warning("Redis에 못 붙음(서버 Redis·터널 확인), 30초 뒤 다시: %s", e)
+                time.sleep(30)
+        if self.stopping:
+            return
         log.info("시작: %s · %s · 컨슈머 %s", self.cfg.role, self.cfg.stream, self.cfg.worker_name)
         while not self.stopping:
             try:

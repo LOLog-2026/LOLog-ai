@@ -51,16 +51,17 @@ SYSTEM = f"""너는 대화 카드로 4컷 만화 콘티를 만든다. 결과는 
 
 def _schema(keys: list[str]) -> dict:
     s = {"type": "string"}
+    en = {"type": "string", "pattern": "^[ -~]+$"}  # 그림 모델용 영어 설명: 출력 단계에서 한글을 막음
     key = {"type": "string", "enum": keys}
     panel = {
         "type": "object",
         "properties": {
             "beat": {"type": "string", "enum": BEATS},
-            "scene": s,
+            "scene": en,
             "cast": {"type": "array", "minItems": 1, "maxItems": 3, "items": {
                 "type": "object",
                 "properties": {"key": key, "position": {"type": "string", "enum": ["left", "center", "right"]},
-                               "expression": s},
+                               "expression": en},
                 "required": ["key", "position", "expression"]}},
             "dialogue": {"type": "array", "maxItems": 2, "items": {
                 "type": "object",
@@ -73,9 +74,9 @@ def _schema(keys: list[str]) -> dict:
     return {
         "type": "object",
         "properties": {
-            "place": {"type": "object", "properties": {"text": s, "prompt": s}, "required": ["text", "prompt"]},
+            "place": {"type": "object", "properties": {"text": s, "prompt": en}, "required": ["text", "prompt"]},
             "characters": {"type": "array", "minItems": 1, "maxItems": len(keys), "items": {
-                "type": "object", "properties": {"key": key, "appearance": s},
+                "type": "object", "properties": {"key": key, "appearance": en},
                 "required": ["key", "appearance"]}},
             "panels": {"type": "array", "minItems": 4, "maxItems": 4, "items": panel},
         },
@@ -116,7 +117,7 @@ def make_storyboard(src: dict, llm: Llm) -> dict:
     schema = _schema(keys)
     user = card_text(src)
     errs: list[str] = []
-    for attempt in (1, 2):
+    for attempt in (1, 2, 3):
         msg = user if attempt == 1 else (
             user + "\n\n앞에서 만든 콘티에 아래 문제가 있었다. 고쳐서 다시 만든다.\n- " + "\n- ".join(errs[:15]))
         raw, stat = llm.chat_json(SYSTEM, msg, schema, "storyboard", temperature=0.4, max_tokens=3072)

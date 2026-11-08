@@ -19,6 +19,7 @@ from .llm import Llm
 log = logging.getLogger(__name__)
 
 KINDS = ["웃김", "황당", "추억"]
+SUMMARY_MAX = 30  # api-dto.md DetectedCard: 1~30자, 카드 제목
 SPEAKERS = ["화자1", "화자2", "화자3", "화자4"]
 CARRY_WINDOW_MS = 5 * 60 * 1000
 
@@ -42,7 +43,7 @@ DETECT_SYSTEM = """너는 대화 녹음을 글로 바꾼 기록에서 보관할 
 - 4컷 만화 한 편이 될 크기로 잡는다. 보통 30초~3분, 40줄 이하. 길게 이어지는 대화면 가장 재밌는 부분만 잡는다
 - 이야기끼리 줄 번호가 겹치지 않게 한다
 - finished는 이야기가 to에서 끝났으면 true, 입력의 마지막 줄까지 이어지고 있어 끝을 알 수 없으면 false
-- summary는 무슨 일이었는지 한국어 한두 문장(200자 이하)
+- summary는 카드 제목으로 쓰는 짧은 한국어 명사구, 공백 포함 20자 안팎(30자를 넘으면 잘림). 예: "버스에서 졸다가 종점까지 간 친구"
 - summary에 사람 이름(연예인, 친구 이름 모두)과 주소를 쓰지 않는다. "한 친구", "배우", "동생"처럼 쓴다"""
 
 SPEAKER_SYSTEM = """다음은 대화 녹음을 글로 바꾼 기록 중 한 이야기 부분이다. 문맥으로 대사마다 누가 말했는지 나눈다.
@@ -58,7 +59,7 @@ DETECT_SCHEMA = {
         "type": "object",
         "properties": {
             "kind": {"type": "string", "enum": KINDS},
-            "summary": {"type": "string"},
+            "summary": {"type": "string", "minLength": 1, "maxLength": 30},
             "from": {"type": "integer"},
             "to": {"type": "integer"},
             "finished": {"type": "boolean"},
@@ -109,7 +110,7 @@ def numbered(sents: list[dict], lo: int = 0, hi: int | None = None) -> str:
 def check_card(card: dict) -> list[str]:
     """api-dto.md DetectedCard 제한."""
     errs = []
-    if not 1 <= len(card["summary"]) <= 200:
+    if not 1 <= len(card["summary"]) <= SUMMARY_MAX:
         errs.append(f"summary 길이 {len(card['summary'])}")
     if card["endMs"] <= card["startMs"]:
         errs.append("endMs<=startMs")
@@ -144,7 +145,7 @@ def to_card(story: dict, lines: list[dict], sents: list[dict]) -> dict:
         })
     return {
         "kind": story["kind"],
-        "summary": story["summary"].strip()[:200],
+        "summary": story["summary"].strip()[:SUMMARY_MAX],
         "startMs": sents[story["from"]]["startMs"],
         "endMs": sents[story["to"]]["endMs"],
         "speakers": [rename[s] for s in order[: len(SPEAKERS)]],

@@ -2,7 +2,8 @@
 # 2호 젯슨의 만화 워커도 콘티를 만들 때 이 서버를 부르므로 LAN 주소에 열고 API 키를 건다.
 [Unit]
 Description=LOLog LLM server (llama.cpp)
-After=network-online.target
+Wants=network-online.target
+After=network-online.target tailscaled.service
 
 [Service]
 User=lolog
