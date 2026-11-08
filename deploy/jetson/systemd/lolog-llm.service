@@ -1,0 +1,18 @@
+# LLM 서버 (llama.cpp llama-server, OpenAI 호환 /v1). 1호 젯슨만.
+# 2호 젯슨의 만화 워커도 콘티를 만들 때 이 서버를 부르므로 LAN 주소에 열고 API 키를 건다.
+[Unit]
+Description=LOLog LLM server (llama.cpp)
+After=network-online.target
+
+[Service]
+User=lolog
+EnvironmentFile=/etc/lolog/llm.env
+ExecStart=/opt/lolog/llama.cpp/build/bin/llama-server \
+  -m ${LLM_MODEL_PATH} --alias ${LLM_ALIAS} \
+  --host ${LLM_HOST} --port 8000 --api-key ${LLM_API_KEY} \
+  -c ${LLM_CTX} -np 1 -ngl 99 -fa on -ctk q8_0 -ctv q8_0 --jinja
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,22 @@
+# 추론 워커. 인스턴스 이름이 역할이다.
+#   1호 젯슨: lolog-worker@detect   2호 젯슨: lolog-worker@comic
+# 종료 신호를 받으면 지금 작업을 끝내고 멈춘다(TimeoutStopSec 안에서).
+[Unit]
+Description=LOLog worker (%i)
+Wants=lolog-tunnel.service
+After=network-online.target lolog-tunnel.service lolog-llm.service
+
+[Service]
+User=lolog
+WorkingDirectory=/opt/lolog/LOLog-ai
+EnvironmentFile=/etc/lolog/worker.env
+Environment=PYTHONPATH=/opt/lolog/LOLog-ai/src PYTHONUNBUFFERED=1
+ExecStart=/opt/lolog/venv/bin/python -m lolog_ai.worker --role %i
+Restart=always
+RestartSec=10
+TimeoutStopSec=900
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+# 교육기관 서버의 Redis와 메인 백엔드를 젯슨의 localhost:6379, :18080으로 당겨 오는 SSH 터널 (TR-10)
+# 서버는 학생 공용이라 서버 쪽 포트는 개인 포트 범위(TUNNEL_REDIS_PORT, TUNNEL_API_PORT)를 쓴다 (LOLog-api deploy/README.md "Jetson 터널")
+# 끊기면 autossh가 다시 붙고, 죽으면 systemd가 다시 띄운다. 두 젯슨 모두.
+[Unit]
+Description=LOLog SSH tunnel to school server (Redis, internal API)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=lolog
+EnvironmentFile=/etc/lolog/tunnel.env
+Environment=AUTOSSH_GATETIME=0
+ExecStart=/usr/bin/autossh -M 0 -N \
+  -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
+  -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/lolog/known_hosts \
+  -i /etc/lolog/tunnel_ed25519 -p ${SSH_PORT} \
+  -L 127.0.0.1:6379:127.0.0.1:${TUNNEL_REDIS_PORT} \
+  -L 127.0.0.1:18080:127.0.0.1:${TUNNEL_API_PORT} \
+  ${SSH_USER}@${SSH_HOST}
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
