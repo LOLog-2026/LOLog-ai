@@ -23,7 +23,7 @@ MAX_BUBBLES = 2
 CROWDED_CAST = 3
 MAX_BUBBLES_CROWDED = 1
 MAX_TEXT = 25  # 말풍선 대사 최대 글자 수(공백 포함). 세로 4칸 실측 최소 27자에서 여유를 둠(#6)
-KEY_RE = re.compile(r"^[A-Z]$")
+KEY_RE = re.compile(r"^(화자[1-4]|[A-Z])$")  # 카드와 같은 화자1… (api-dto.md 콘티). A-Z는 예전 형식
 # 그림 설명에 섞이면 안 되는 내부 이름: "화자1", "speaker A", "Speaker 2" 등
 INTERNAL_NAME_RE = re.compile(r"화자\s*\d|\bspeaker\s*[A-Z0-9]\b", re.IGNORECASE)
 HANGUL_RE = re.compile(r"[가-힣]")
