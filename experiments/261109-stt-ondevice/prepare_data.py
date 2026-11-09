@@ -3,7 +3,7 @@
 FLEURS ko_kr(Google, CC-BY-4.0)을 받아 아래 세트를 만든다.
 
   clean      FLEURS test 그대로 (짧은 발화, 낭독체)
-  babble10   test 발화 + 다른 화자 3명 섞은 웅성거림, SNR 10dB (train 발화로 만듦)
+  babble10   test 발화 + 다른 화자 3명 섞은 웅성거림, SNR 10dB (dev 발화로 만듦)
   babble5    같은 방식, SNR 5dB (시끄러운 카페·TV 옆 상황)
   quiet      test 발화를 -20dB로 줄임 (폰이 멀리 있거나 주머니 속)
   longform   test 발화를 0.3~2.5초 쉼(약한 배경 소음)으로 이어 붙인 5분짜리 긴 녹음.
@@ -31,16 +31,21 @@ import numpy as np
 import soundfile as sf
 
 FLEURS_URL = "https://storage.googleapis.com/xtreme_translations/FLEURS102/ko_kr.tar.gz"
+# tar 안 순서가 dev -> test -> train 이라 앞 350MB만 받으면 dev·test가 다 들어 있다(전체 1.8GB).
+FLEURS_HEAD_BYTES = 350_000_000
 SR = 16000
 
 
-def download(url: str, dst: Path) -> Path:
+def download(url: str, dst: Path, max_bytes: int = 0) -> Path:
     if dst.exists() and dst.stat().st_size > 0:
         return dst
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_suffix(dst.suffix + ".part")
     print(f"받는 중: {url}")
-    with urllib.request.urlopen(url) as r, open(tmp, "wb") as f:
+    req = urllib.request.Request(url)
+    if max_bytes:
+        req.add_header("Range", f"bytes=0-{max_bytes - 1}")
+    with urllib.request.urlopen(req) as r, open(tmp, "wb") as f:
         while chunk := r.read(1 << 20):
             f.write(chunk)
     tmp.rename(dst)
@@ -52,8 +57,11 @@ def load_fleurs(tar_path: Path, raw_dir: Path) -> dict[str, list[dict]]:
     out_root = raw_dir / "fleurs"
     marker = out_root / ".done"
     if not marker.exists():
-        with tarfile.open(tar_path) as tf:
+        with tarfile.open(tar_path, mode="r|gz") as tf:
+          try:
             for m in tf:
+                if "/train" in m.name or m.name.endswith("train.tsv"):
+                    break  # train은 쓰지 않는다(웅성거림은 dev 발화로 만든다)
                 if not m.isfile():
                     continue
                 parts = Path(m.name).parts  # ko_kr/audio/test/x.wav , ko_kr/test.tsv
@@ -68,12 +76,16 @@ def load_fleurs(tar_path: Path, raw_dir: Path) -> dict[str, list[dict]]:
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 with tf.extractfile(m) as src, open(dst, "wb") as f:
                     f.write(src.read())
+          except (EOFError, tarfile.ReadError):
+              pass  # 앞부분만 받은 tar라 끝이 잘려 있음
         marker.touch()
 
     splits: dict[str, list[dict]] = {}
-    for split in ("train", "dev", "test"):
+    for split in ("dev", "test"):
         rows = []
         tsv = out_root / f"{split}.tsv"
+        if not tsv.exists():  # 앞부분만 받은 tar에는 test.tsv가 없다 -> 저장소에 둔 사본
+            tsv = Path(__file__).resolve().parent / "fleurs_meta" / f"{split}.tsv"
         with open(tsv, encoding="utf-8") as f:
             for r in csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
                 # id, file_name, raw_transcription, transcription, phonemes, num_samples, gender
@@ -215,9 +227,9 @@ def main() -> None:
     a = ap.parse_args()
     out = Path(a.out)
     raw = out / "raw"
-    tar = download(FLEURS_URL, raw / "ko_kr.tar.gz")
+    tar = download(FLEURS_URL, raw / "ko_kr-head.tar.gz", FLEURS_HEAD_BYTES)
     sp = load_fleurs(tar, raw)
-    pool = [r["wav"] for r in sp["train"]]
+    pool = [r["wav"] for r in sp["dev"]]  # test와 겹치지 않는 화자·문장
     build_variants("fleurs", sp["test"], pool, out, a.seed)
     build_longform("fleurs", sp["test"], out, a.seed)
     # 프롬프트·설정 튜닝은 dev로 하고 test는 확인용으로만 쓴다(과적합 방지)
