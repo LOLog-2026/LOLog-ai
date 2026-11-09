@@ -93,7 +93,33 @@ def apply_gain(x: np.ndarray, mode: str) -> np.ndarray:
         r = float(np.sqrt(np.mean(x ** 2)) + 1e-8)
         g = min(20.0, (10 ** (-23 / 20)) / r)
         return np.clip(x * g, -1, 1)
+    if mode == "agc":  # 폰에서 그대로 쓸 수 있는 실시간 자동 크기 맞춤(앞만 보고 결정)
+        return agc(x)
     raise ValueError(mode)
+
+
+def agc(x: np.ndarray, target_db: float = -23.0, max_gain: float = 20.0,
+        frame: int = 512) -> np.ndarray:
+    """32ms 프레임마다 말소리 크기를 따라가며 천천히 키운다. 파일 전체를 미리 보지 않는다.
+
+    - 바닥 소음(noise)은 최솟값 쪽으로 빨리, 위로는 아주 천천히 따라간다.
+    - 바닥보다 6dB 넘게 큰 프레임만 말소리 크기(level)를 갱신한다.
+    - 이득은 target/level, 1~max_gain 사이, 프레임 사이에서 부드럽게 바꾼다.
+    """
+    tgt = 10 ** (target_db / 20)
+    out = np.empty_like(x)
+    noise, level, g = 1e-4, tgt, 1.0
+    for i in range(0, len(x), frame):
+        f = x[i:i + frame]
+        r = float(np.sqrt(np.mean(f * f)) + 1e-8)
+        noise = r if r < noise else noise * 1.002
+        if r > noise * 2.0:
+            level = 0.9 * level + 0.1 * r
+        g_new = min(max_gain, max(1.0, tgt / level))
+        ramp = np.linspace(g, g_new, len(f), dtype=np.float32)
+        out[i:i + frame] = np.clip(f * ramp, -1, 1)
+        g = g_new
+    return out
 
 
 def segments(x: np.ndarray, a, vad) -> list[np.ndarray]:
@@ -171,7 +197,7 @@ def main() -> None:
     ap.add_argument("--max-speech", type=float, default=20.0)
     ap.add_argument("--pad", type=float, default=0.3, help="구간 앞에 붙이는 초 (앱 링버퍼)")
     ap.add_argument("--tail-pad", type=float, default=0.0, help="구간 뒤에 붙이는 초")
-    ap.add_argument("--gain", default="none", choices=["none", "peak", "rms"])
+    ap.add_argument("--gain", default="none", choices=["none", "peak", "rms", "agc"])
     ap.add_argument("--gain-scope", default="segment", choices=["file", "segment"])
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--limit", type=int, default=0)
