@@ -12,6 +12,10 @@ class ApiError(Exception):
     def __init__(self, status: int, body: str):
         super().__init__(f"HTTP {status}: {body[:300]}")
         self.status = status
+        try:
+            self.code = json.loads(body).get("code")  # ErrorResponse.code (api-dto.md)
+        except (ValueError, AttributeError):
+            self.code = None
 
 
 class InternalApi:

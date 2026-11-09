@@ -26,6 +26,7 @@ from .detect import detect
 from .llm import Llm
 
 log = logging.getLogger("lolog_ai.worker")
+GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
 FAIL_KEY = "lolog:worker:fail:{}"
 RETRY_DELAYS = [5, 30]  # 1번째, 2번째 실패 뒤 기다리는 초
 
@@ -101,22 +102,44 @@ class Worker:
                 self.done(mid)
                 log.info("job %s 처리 %.1f초", job_id, time.perf_counter() - t0)
                 return
+            except ApiError as e:
+                if not (e.status == 404 and e.code in GONE_CODES):
+                    if self._failed(mid, job_id, key, e):
+                        return
+                    continue
+                # 사용자가 만드는 중인 만화를 지웠거나 탈퇴해서 작업이 없어짐(api-spec "작업이 지워졌을 때").
+                # 다시 하지 않고 fail도 보내지 않고 메시지만 지운다
+                log.info("job %s 작업이 지워져 버림: %s", job_id, e.code)
+                self.r.delete(key)
+                self.done(mid)
+                return
             except Exception as e:  # noqa: BLE001 - 어떤 실패든 횟수를 세고 다시 시도
-                permanent = isinstance(e, StoryboardInvalid) or (isinstance(e, ApiError) and e.status == 400)
-                n = self.cfg.max_attempts if permanent else self.r.incr(key)
-                self.r.expire(key, 86400)
-                log.warning("job %s 실패 %d/%d: %s", job_id, n, self.cfg.max_attempts,
-                            type(e).__name__ + ": " + str(e)[:200])
-                if n >= self.cfg.max_attempts:
-                    try:
-                        self.api.fail_job(job_id, f"{type(e).__name__}: {e}")
-                    except Exception as e2:  # noqa: BLE001
-                        log.error("job %s fail 알림도 실패, 메시지를 남겨 둠: %s", job_id, e2)
-                        return  # XACK 하지 않음 → 10분 뒤 XAUTOCLAIM으로 다시 시도
-                    self.r.delete(key)
-                    self.done(mid)
+                if self._failed(mid, job_id, key, e):
                     return
-                time.sleep(RETRY_DELAYS[min(n - 1, len(RETRY_DELAYS) - 1)])
+
+    def _failed(self, mid: str, job_id: int, key: str, e: Exception) -> bool:
+        """실패 한 번을 세고, 끝났으면(메시지를 지웠거나 남겨 두기로 했으면) True. 아니면 잠깐 쉬고 False."""
+        permanent = isinstance(e, StoryboardInvalid) or (isinstance(e, ApiError) and e.status == 400)
+        n = self.cfg.max_attempts if permanent else self.r.incr(key)
+        self.r.expire(key, 86400)
+        log.warning("job %s 실패 %d/%d: %s", job_id, n, self.cfg.max_attempts,
+                    type(e).__name__ + ": " + str(e)[:200])
+        if n < self.cfg.max_attempts:
+            time.sleep(RETRY_DELAYS[min(n - 1, len(RETRY_DELAYS) - 1)])
+            return False
+        try:
+            self.api.fail_job(job_id, f"{type(e).__name__}: {e}")
+        except ApiError as e2:
+            if e2.status != 400:
+                log.error("job %s fail 알림도 실패, 메시지를 남겨 둠: %s", job_id, e2)
+                return True  # XACK 하지 않음 → 10분 뒤 XAUTOCLAIM으로 다시 시도
+            log.info("job %s fail에 400(작업 없음), 메시지만 지움", job_id)
+        except Exception as e2:  # noqa: BLE001
+            log.error("job %s fail 알림도 실패, 메시지를 남겨 둠: %s", job_id, e2)
+            return True
+        self.r.delete(key)
+        self.done(mid)
+        return True
 
     def run(self) -> None:
         log.info("LLM 서버 기다리는 중: %s", self.cfg.llm_base_url)  # 2호도 콘티에 1호 LLM을 씀
