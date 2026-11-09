@@ -158,8 +158,9 @@ _keep = re.compile(r"[^0-9a-z가-힣ㄱ-ㆎ ]")
 def norm(t: str, ref: bool = False) -> str:
     t = unicodedata.normalize("NFKC", t).lower()
     t = re.sub(r"<\|[^|]*\|>", " ", t)  # 혹시 남은 SenseVoice 태그
-    if ref:  # FLEURS 기준 글의 괄호 속 원어 표기(예: 비슈케크(Bishkek))는 읽지 않으므로 뺀다
-        t = re.sub(r"\([^)]*\)", " ", t)
+    if ref:  # FLEURS 기준 글의 괄호 속 원어 표기(예: 비슈케크(Bishkek))는 읽지 않으므로 뺀다.
+        # 단, 괄호 안에 한글이 있으면 실제로 읽은 내용이라 남긴다
+        t = re.sub(r"\(([^)]*)\)", lambda m: f" {m.group(1)} " if re.search(r"[\uac00-\ud7a3]", m.group(1)) else " ", t)
     t = re.sub(r"(?<=\d),(?=\d)", "", t)  # 1,000 -> 1000
     t = _keep.sub(" ", t)
     return re.sub(r"\s+", " ", t).strip()
