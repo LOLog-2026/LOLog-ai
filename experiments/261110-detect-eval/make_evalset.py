@@ -7,6 +7,8 @@ evalset/stories*.json(정답이 붙은 이야기 100개)과 evalset/filler*.json
   short-clean / short-stt   녹음 25개, 각 이야기 4개 + 잡담. 3~5분짜리
   long-clean  / long-stt    녹음 4개, 각 이야기 25개 + 잡담 22~23묶음 + (있으면) 방송 소리 1군데. 실제 1시간 묶음에 가까운 긴 입력
   nostory-stt               잡담만 (정답: 카드 0개)
+  longstory-clean / -stt    (evalset/longstories*.json이 있으면) 녹음 20개, 각 긴 이야기(15~36줄) 2개 + 잡담
+  long2-clean / long2-stt   (같은 조건) 녹음 12개, 각 짧은 이야기 15 + 긴 이야기 4 + 잡담 18 + 방송 1군데. long보다 녹음이 많아 덜 흔들림
   tv                        --tv 로 준 방송 녹음 STT 결과 그대로 (정답: 카드 0~1개)
 
 -clean은 문장부호만 뺀 글, -stt는 폰 STT처럼 망가뜨린 글이다.
@@ -17,7 +19,7 @@ evalset/stories*.json(정답이 붙은 이야기 100개)과 evalset/filler*.json
 같은 --seed면 언제나 같은 결과가 나온다.
 
 예)
-  python3 make_evalset.py --out sets --tv ~/jetson-bench/llm-bench/sample_tv_37min.json
+  python3 make_evalset.py --out sets --tv ~/llm-bench/sample_tv_37min.json
 """
 
 from __future__ import annotations
@@ -227,10 +229,58 @@ def main() -> None:
     rng.shuffle(noitems)
     nostory = [("nostory1", noitems[: nf // 2]), ("nostory2", noitems[nf // 2:])]
 
+    # ---- 2차(긴 이야기). 기존 세트가 바뀌지 않게 따로 만든 rng를 쓴다 ----
+    lstories = [x for f in sorted((HERE / "evalset").glob("longstories*.json"))
+                for x in json.loads(f.read_text())["stories"]]
+    for s in lstories:
+        s["type"] = "story"
+    rng2 = random.Random(f"{args.seed}-v2")
+    longstory, long2 = [], []
+    if lstories:
+        # longstory: 녹음마다 긴 이야기 2개 + 잡담. 이야기 경계·빌드업 측정용
+        order = lstories[:]
+        rng2.shuffle(order)
+        fpool = fillers[:]
+        rng2.shuffle(fpool)
+        fi = 0
+        for r in range(len(order) // 2):
+            items = []
+            for st in order[r * 2:(r + 1) * 2]:
+                for _ in range(rng2.choice([1, 2])):
+                    items.append(fpool[fi % nf])
+                    fi += 1
+                items.append(st)
+            items.append(fpool[fi % nf])
+            fi += 1
+            longstory.append((f"lstory{r + 1:02d}", items))
+        # long2: 긴 입력 녹음 12개(각 약 25~30분). 짧은 이야기 15 + 긴 이야기 4 + 잡담 18 + 방송 1군데.
+        # 이야기는 녹음끼리 겹쳐 쓰되(풀을 돌려 씀) 한 녹음 안에서는 겹치지 않는다. long(4개)보다 녹음 수를 늘려 흔들림을 줄인다
+        n_long2 = 12
+        spool, lpool, fpool = stories[:], lstories[:], fillers[:]
+        for p in (spool, lpool, fpool):
+            rng2.shuffle(p)
+        si = li = fi = 0
+        tvs2 = tv_excerpts(tv_path, n_long2, 25, rng2)
+        for r in range(n_long2):
+            lst = []
+            for _ in range(15):
+                lst.append(spool[si % ns]); si += 1
+            for _ in range(4):
+                lst.append(lpool[li % len(lpool)]); li += 1
+            for _ in range(18):
+                lst.append(fpool[fi % nf]); fi += 1
+            rng2.shuffle(lst)
+            if tvs2:
+                lst.insert(rng2.randint(len(lst) // 4, 3 * len(lst) // 4), tvs2[r])
+            long2.append((f"long2_{r + 1:02d}", lst))
+
     for stt in (False, True):
         suf = "stt" if stt else "clean"
         write(f"short-{suf}", short, stt)
         write(f"long-{suf}", long, stt)
+        if lstories:
+            write(f"longstory-{suf}", longstory, stt)
+            write(f"long2-{suf}", long2, stt)
     write("nostory-stt", nostory, True)
     if tv_path:
         d = out / "tv"
