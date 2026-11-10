@@ -12,6 +12,10 @@ FLUX_NF4_DIR에 저장해 두고 다음부터는 거기서 바로 읽는다.
   FLUX_MODEL     기본 black-forest-labs/FLUX.2-klein-4B (HF 캐시에 받아 둠, HF_HUB_OFFLINE=1 권장)
   FLUX_NF4_DIR   기본 /opt/lolog/models/flux2-klein-4b-nf4
   FLUX_LORA      화풍 LoRA(.safetensors) 경로. 없으면 원본 그대로
+
+참조 그림: 콘티 화자에 기본 화자·친구 아바타가 붙어 있으면 그 화자가 나오는 컷에 그림을 FLUX.2 klein의
+참조 이미지(image)로 넣는다. 2호 벤치(2026-11-10): 참조 3장까지 메모리 부족 없음, 컷 23초 → 384px 참조 1장
+26초·2장 30초·3장 37초. 384와 512는 눈으로 차이가 없어 384로 줄여 넣는다.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ MODEL = os.environ.get("FLUX_MODEL", "black-forest-labs/FLUX.2-klein-4B")
 NF4_DIR = Path(os.environ.get("FLUX_NF4_DIR", "/opt/lolog/models/flux2-klein-4b-nf4"))
 LORA = os.environ.get("FLUX_LORA") or None
 PANEL = 768
+REF_SIZE = 384
 STEPS = 4
 FONT_SIZE = 36
 
@@ -90,34 +95,54 @@ def encode(prompts: list[str]):
     return embeds
 
 
-def draw(storyboard: dict, seed: int) -> bytes:
-    """콘티 → PNG 바이트. 파일을 남기지 않는다(deployment.md 7장 임시 파일)."""
+def _image_pipe():
     import torch
     from diffusers import Flux2KleinPipeline
 
+    pipe = Flux2KleinPipeline.from_pretrained(MODEL, transformer=load_transformer(), text_encoder=None,
+                                              tokenizer=None, torch_dtype=torch.bfloat16)
+    pipe.vae.to("cuda")
+    if LORA:
+        pipe.load_lora_weights(LORA)
+    return pipe
+
+
+def _render(pipe, embeds, seed: int, refs: list | None = None):
+    import torch
+
+    with torch.inference_mode():
+        latents = pipe(image=refs or None, prompt_embeds=embeds, width=PANEL, height=PANEL,
+                       guidance_scale=1.0, num_inference_steps=STEPS, output_type="latent",
+                       generator=torch.Generator("cuda").manual_seed(seed)).images
+        img = pipe.vae.decode(latents.to(pipe.vae.dtype), return_dict=False)[0]
+        return pipe.image_processor.postprocess(img, output_type="pil")[0]
+
+
+def _ref(img):
+    from PIL import Image
+    return img.convert("RGB").resize((REF_SIZE, REF_SIZE), Image.LANCZOS)
+
+
+def draw(storyboard: dict, seed: int, refs: dict | None = None) -> bytes:
+    """콘티 → PNG 바이트. 파일을 남기지 않는다(deployment.md 7장 임시 파일).
+
+    refs: 화자 키 → 참조 그림(PIL). 없는 화자는 외모 글만으로 그린다.
+    """
     from ..bubble import draw_bubbles, place_bubbles
     from ..faces import detect_faces, match_speakers
-    from ..render import compose, prompt
+    from ..render import compose, prompt, ref_keys
 
+    refs = {k: _ref(v) for k, v in (refs or {}).items()}
     t0 = time.perf_counter()
-    embeds = encode([prompt(storyboard, p) for p in storyboard["panels"]])
+    embeds = encode([prompt(storyboard, p, set(refs)) for p in storyboard["panels"]])
     t1 = time.perf_counter()
     pipe = None
     try:
-        pipe = Flux2KleinPipeline.from_pretrained(MODEL, transformer=load_transformer(), text_encoder=None,
-                                                  tokenizer=None, torch_dtype=torch.bfloat16)
-        pipe.vae.to("cuda")
-        if LORA:
-            pipe.load_lora_weights(LORA)
+        pipe = _image_pipe()
         t2 = time.perf_counter()
         panels = []
         for i, panel in enumerate(storyboard["panels"]):
-            with torch.inference_mode():
-                latents = pipe(prompt_embeds=embeds[i], width=PANEL, height=PANEL, guidance_scale=1.0,
-                               num_inference_steps=STEPS, output_type="latent",
-                               generator=torch.Generator("cuda").manual_seed(seed + i)).images
-                img = pipe.vae.decode(latents.to(pipe.vae.dtype), return_dict=False)[0]
-                img = pipe.image_processor.postprocess(img, output_type="pil")[0]
+            img = _render(pipe, embeds[i], seed + i, [refs[k] for k in ref_keys(panel, set(refs))])
             if panel["dialogue"]:
                 faces = detect_faces(img)
                 pos = {c["key"]: c["position"] for c in panel["cast"]}
@@ -130,6 +155,27 @@ def draw(storyboard: dict, seed: int) -> bytes:
         _free()
     buf = io.BytesIO()
     compose(panels).save(buf, format="PNG", optimize=True)
-    log.info("그림: 인코딩 %.0f초, 모델 올림 %.0f초, 그리기 %.0f초, %d바이트",
-             t1 - t0, t2 - t1, time.perf_counter() - t2, buf.tell())
+    log.info("그림: 인코딩 %.0f초, 모델 올림 %.0f초, 그리기 %.0f초, 참조 %d명, %d바이트",
+             t1 - t0, t2 - t1, time.perf_counter() - t2, len(refs), buf.tell())
+    return buf.getvalue()
+
+
+def draw_avatar(photo, appearance: str, seed: int) -> bytes:
+    """친구 사진 → 기본 화자와 같은 화풍·구도의 768 아바타 PNG. 사진은 메모리에서만 쓴다."""
+    from PIL import ImageOps
+
+    from ..render import portrait_prompt
+
+    photo = ImageOps.exif_transpose(photo).convert("RGB")
+    photo.thumbnail((512, 512))  # 벤치에서 잰 최대 참조 크기(512)를 넘지 않게
+    embeds = encode([portrait_prompt(appearance, from_photo=True)])
+    pipe = None
+    try:
+        pipe = _image_pipe()
+        img = _render(pipe, embeds[0], seed, [photo])
+    finally:
+        embeds = pipe = None
+        _free()
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()

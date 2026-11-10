@@ -21,12 +21,12 @@ import redis
 
 from . import config as cfgmod
 from .api import ApiError, InternalApi
-from .comic import StoryboardInvalid, comic
+from .comic import StoryboardInvalid, avatar, comic
 from .detect import detect
 from .llm import Llm
 
 log = logging.getLogger("lolog_ai.worker")
-GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
+GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "FRIEND_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
 FAIL_KEY = "lolog:worker:fail:{}"
 RETRY_DELAYS = [5, 30]  # 1번째, 2번째 실패 뒤 기다리는 초
 
@@ -81,6 +81,9 @@ class Worker:
             self.api.post_cards(msg["recordingId"], result)
             log.info("job %s 감지 완료: 카드 %d개, carryFromMs=%s",
                      msg["jobId"], len(result["cards"]), result["carryFromMs"])
+        elif msg.get("kind") == "avatar":
+            avatar(msg, self.api)
+            log.info("job %s 아바타 완료: friend %s", msg["jobId"], msg["friendId"])
         else:
             comic(msg, self.api, self.llm)
             log.info("job %s 만화 완료: comic %s", msg["jobId"], msg["comicId"])
