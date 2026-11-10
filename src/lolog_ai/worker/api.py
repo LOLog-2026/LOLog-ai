@@ -50,14 +50,34 @@ class InternalApi:
     def post_storyboard(self, comic_id: int, storyboard: dict) -> None:
         self._json("POST", f"/internal/comics/{comic_id}/storyboard", storyboard)
 
-    def post_image(self, comic_id: int, png: bytes) -> None:
+    def _post_png(self, path: str, png: bytes, filename: str, fields: dict[str, str] | None = None) -> None:
         boundary = uuid.uuid4().hex
-        body = (
-            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"comic.png\"\r\n"
+        body = b"".join(
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
+            for k, v in (fields or {}).items()
+        ) + (
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\n"
             f"Content-Type: image/png\r\n\r\n"
         ).encode() + png + f"\r\n--{boundary}--\r\n".encode()
-        self._send("POST", f"/internal/comics/{comic_id}/image", body,
-                   f"multipart/form-data; boundary={boundary}")
+        self._send("POST", path, body, f"multipart/form-data; boundary={boundary}")
+
+    def post_image(self, comic_id: int, png: bytes) -> None:
+        self._post_png(f"/internal/comics/{comic_id}/image", png, "comic.png")
+
+    def get_friend_photo(self, friend_id: int) -> bytes:
+        return self._send("GET", f"/internal/friends/{friend_id}/photo")
+
+    def post_friend_avatar(self, friend_id: int, png: bytes, appearance: str) -> None:
+        """appearance는 백엔드가 저장해 두었다가 만화 source의 character.appearance로 돌려준다."""
+        self._post_png(f"/internal/friends/{friend_id}/avatar", png, "avatar.png", {"appearance": appearance})
+
+    def fetch(self, url: str) -> bytes:
+        """source의 imageUrl(서명 주소) 받기. 서명 주소라 내부 토큰을 붙이지 않는다."""
+        try:
+            with urllib.request.urlopen(url, timeout=self.timeout) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            raise ApiError(e.code, e.read().decode(errors="replace")) from None
 
     def fail_job(self, job_id: int, reason: str) -> None:
         self._json("POST", f"/internal/jobs/{job_id}/fail", {"reason": reason[:500] or "unknown"})

@@ -3,6 +3,9 @@
 LLM이 장소·인물 외모·컷 4개를 JSON 스키마에 맞춰 만들고, 코드가 version·comicId·cardId·layout·index·
 name을 채운다. storyboard.validate로 검사해서 틀리면 문제 목록을 알려 한 번 다시 묻고, 그래도 틀리면 실패.
 화자 키는 카드와 같은 "화자1"…을 쓴다(api-dto.md 콘티).
+
+source 화자에 character(기본 화자·친구 아바타)가 붙어 있으면 그 화자의 외모는 LLM이 정하지 않고
+character.appearance를 그대로 쓴다. 콘티에는 characters[].ref로 어떤 그림을 썼는지 남긴다.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ SYSTEM = f"""너는 대화 카드로 4컷 만화 콘티를 만든다. 결과는 
 인물(characters)
 - key는 카드의 화자 키(화자1, 화자2…) 그대로. 카드에 있는 화자만 쓴다
 - appearance는 그 이야기에 어울리는 외모를 영어로 짧게 정한다(나이대, 머리, 옷 색). 모든 컷에 그대로 들어간다
+- 화자 목록에 "외모 정해짐"이 있는 화자는 그 외모를 그대로 appearance에 쓰고, scene에서도 그 외모에 맞게 부른다
 
 그림 설명(place.prompt, appearance, scene, expression)은 모두 영어
 - 이름, 별명, "화자1" 같은 키를 쓰지 않는다. "the woman", "the man", "the boy"처럼 쓴다
@@ -84,9 +88,20 @@ def _schema(keys: list[str]) -> dict:
     }
 
 
+def fixed_looks(src: dict) -> dict[str, dict]:
+    """화자 키 → character. 사용자가 그림을 고른 화자만."""
+    return {sp["key"]: sp["character"] for sp in src["speakers"] if sp.get("character")}
+
+
 def card_text(src: dict) -> str:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
-    speakers = ", ".join(f"{k}" + (f"(별명 {n})" if n else "") for k, n in names.items())
+    fixed = fixed_looks(src)
+
+    def who(k: str, n: str | None) -> str:
+        out = k + (f"(별명 {n})" if n else "")
+        return out + (f"[외모 정해짐: {fixed[k]['appearance']}]" if k in fixed else "")
+
+    speakers = ", ".join(who(k, n) for k, n in names.items())
     lines = "\n".join(f"[{l['id']}] {l['speaker']}: {l['text']}" for l in src["lines"])
     return (f"종류: {src['kind']}\n요약: {src['summary']}\n장소: {src.get('place') or '(없음, 정해 줘)'}\n"
             f"화자: {speakers}\n대사:\n{lines}")
@@ -94,14 +109,14 @@ def card_text(src: dict) -> str:
 
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
+    fixed = fixed_looks(src)
     place = raw["place"]
     if src.get("place"):
         place = {**place, "text": src["place"]}  # 사용자가 적은 장소는 그대로
     sb = {
         "version": 1, "comicId": src["comicId"], "cardId": src["cardId"], "layout": "vertical4",
         "place": place,
-        "characters": [{"key": c["key"], "name": names.get(c["key"]), "appearance": c["appearance"]}
-                       for c in raw["characters"]],
+        "characters": [_character(c, names, fixed) for c in raw["characters"]],
         "panels": [],
     }
     for i, p in enumerate(raw["panels"][:4]):
@@ -110,6 +125,14 @@ def assemble(raw: dict, src: dict) -> dict:
         sb["panels"].append({"index": i + 1, "beat": p["beat"], "scene": p["scene"],
                              "cast": cast, "dialogue": dialogue})
     return sb
+
+
+def _character(c: dict, names: dict, fixed: dict) -> dict:
+    out = {"key": c["key"], "name": names.get(c["key"]), "appearance": c["appearance"]}
+    if c["key"] in fixed:  # 고른 그림의 외모 글로 덮어씀(LLM이 바꿔 써도 무시)
+        out["appearance"] = fixed[c["key"]]["appearance"]
+        out["ref"] = fixed[c["key"]]["ref"]
+    return out
 
 
 def make_storyboard(src: dict, llm: Llm) -> dict:
