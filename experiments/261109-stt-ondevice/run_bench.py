@@ -71,20 +71,41 @@ def make_recognizer(a) -> sherpa_onnx.OfflineRecognizer:
     raise ValueError(kind)
 
 
-def make_vad(a) -> sherpa_onnx.VoiceActivityDetector:
+def make_vad(a, threshold: float | None = None) -> sherpa_onnx.VoiceActivityDetector:
     cfg = sherpa_onnx.VadModelConfig()
     cfg.silero_vad.model = str(Path(a.models) / "silero_vad.onnx")
-    cfg.silero_vad.threshold = a.vad_threshold
+    cfg.silero_vad.threshold = a.vad_threshold if threshold is None else threshold
     cfg.silero_vad.min_silence_duration = a.min_silence
     cfg.silero_vad.min_speech_duration = a.min_speech
     cfg.silero_vad.max_speech_duration = a.max_speech
     cfg.silero_vad.window_size = 512
     cfg.sample_rate = SR
     cfg.num_threads = 1
-    return sherpa_onnx.VoiceActivityDetector(cfg, buffer_size_in_seconds=max(60, a.max_speech * 2))
+    buf = a.vad_buffer or (300.0 if a.hard_max_speech else max(60, a.max_speech * 2))
+    return sherpa_onnx.VoiceActivityDetector(cfg, buffer_size_in_seconds=buf)
 
 
-def apply_gain(x: np.ndarray, mode: str) -> np.ndarray:
+def hard_split(x: np.ndarray, st: int, en: int, limit: int, frame: int = 512) -> list[tuple[int, int]]:
+    """limit 샘플보다 긴 구간을 limit 이하로 강제로 자른다.
+
+    자르는 곳은 [st+limit/2, st+limit] 안에서 32ms 프레임 에너지가 가장 낮은 곳(말 사이 쉼일 확률이 큼).
+    VAD가 웅성거림·TV 소리 때문에 닫히지 않을 때 구간이 수십~수백 초로 길어지는 것을 막는다.
+    """
+    out = []
+    while en - st > limit:
+        lo, hi = st + limit // 2, st + limit
+        best, best_e = hi, float("inf")
+        for j in range(lo, hi - frame + 1, frame):
+            e = float(np.mean(x[j:j + frame] ** 2))
+            if e < best_e:
+                best, best_e = j + frame // 2, e
+        out.append((st, best))
+        st = best
+    out.append((st, en))
+    return out
+
+
+def apply_gain(x: np.ndarray, mode: str, a=None) -> np.ndarray:
     if mode == "none":
         return x
     if mode == "peak":  # 파일 전체 최대값을 0.9로
@@ -94,12 +115,16 @@ def apply_gain(x: np.ndarray, mode: str) -> np.ndarray:
         g = min(20.0, (10 ** (-23 / 20)) / r)
         return np.clip(x * g, -1, 1)
     if mode == "agc":  # 폰에서 그대로 쓸 수 있는 실시간 자동 크기 맞춤(앞만 보고 결정)
-        return agc(x)
+        if a is None:
+            return agc(x)
+        return agc(x, max_gain=a.agc_max_gain, noise_ceil_db=a.agc_noise_ceil_db,
+                   noise_init=a.agc_noise_init)
     raise ValueError(mode)
 
 
 def agc(x: np.ndarray, target_db: float = -23.0, max_gain: float = 20.0,
-        frame: int = 512) -> np.ndarray:
+        frame: int = 512, noise_ceil_db: float | None = None,
+        noise_init: str = "fixed") -> np.ndarray:
     """32ms 프레임마다 말소리 크기를 따라가며 천천히 키운다. 파일 전체를 미리 보지 않는다.
 
     - 바닥 소음(noise)은 최솟값 쪽으로 빨리, 위로는 아주 천천히 따라간다.
@@ -109,6 +134,8 @@ def agc(x: np.ndarray, target_db: float = -23.0, max_gain: float = 20.0,
     tgt = 10 ** (target_db / 20)
     out = np.empty_like(x)
     noise, level, g = 1e-4, tgt, 1.0
+    if noise_init == "first" and len(x):  # 1e-4(-80dBFS)에서 천천히 오르면 짧은 녹음에선 바닥 소음을 못 따라감
+        noise = float(np.sqrt(np.mean(x[:frame] ** 2)) + 1e-8)
     for i in range(0, len(x), frame):
         f = x[i:i + frame]
         r = float(np.sqrt(np.mean(f * f)) + 1e-8)
@@ -116,30 +143,167 @@ def agc(x: np.ndarray, target_db: float = -23.0, max_gain: float = 20.0,
         if r > noise * 2.0:
             level = 0.9 * level + 0.1 * r
         g_new = min(max_gain, max(1.0, tgt / level))
+        if noise_ceil_db is not None:  # 키운 뒤 바닥 소음이 ceil 을 넘지 않게
+            g_new = max(1.0, min(g_new, 10 ** (noise_ceil_db / 20) / noise))
         ramp = np.linspace(g, g_new, len(f), dtype=np.float32)
         out[i:i + frame] = np.clip(f * ramp, -1, 1)
         g = g_new
     return out
 
 
-def segments(x: np.ndarray, a, vad) -> list[np.ndarray]:
-    """앱처럼 VAD로 잘라 앞에 pad초를 붙인 구간들. vad가 None이면 통째로."""
+def track_noise_level(x: np.ndarray, frame: int = 512, target_db: float = -23.0) -> tuple[np.ndarray, np.ndarray]:
+    """agc와 같은 방식으로 프레임마다 바닥 소음(noise)과 말소리 크기(level)를 따라간 값(dBFS). 크기 맞춤 전 원래 소리 기준.
+
+    noise: 첫 프레임에서 시작, 더 작으면 바로 내려가고 아니면 x1.002씩 오름.
+    level: -23dBFS에서 시작, noise의 2배(6dB)를 넘는 프레임에서만 0.9/0.1로 따라감.
+    """
+    n = (len(x) + frame - 1) // frame
+    nz, lv = np.empty(n, dtype=np.float32), np.empty(n, dtype=np.float32)
+    noise = float(np.sqrt(np.mean(x[:frame] ** 2)) + 1e-8) if len(x) else 1e-4
+    level = 10 ** (target_db / 20)
+    for k, i in enumerate(range(0, len(x), frame)):
+        f = x[i:i + frame]
+        r = float(np.sqrt(np.mean(f * f)) + 1e-8)
+        noise = r if r < noise else noise * 1.002
+        if r > noise * 2.0:
+            level = 0.9 * level + 0.1 * r
+        nz[k] = 20 * np.log10(noise)
+        lv[k] = 20 * np.log10(level)
+    return nz, lv
+
+
+def noise_floor_db(x: np.ndarray, frame: int = 512) -> np.ndarray:
+    return track_noise_level(x, frame)[0]
+
+
+def adapt_threshold(noise_db: float, lo_db: float, hi_db: float, th_lo: float = 0.4, th_hi: float = 0.6) -> float:
+    if noise_db <= lo_db:
+        return th_lo
+    if noise_db >= hi_db:
+        return th_hi
+    return round(th_lo + (th_hi - th_lo) * (noise_db - lo_db) / (hi_db - lo_db), 3)
+
+
+def adapt_threshold_snr(snr_db: float, lo_db: float, hi_db: float, th_quiet: float = 0.4, th_noisy: float = 0.6) -> float:
+    """SNR이 HI 이상이면 0.4(조용한 곳), LO 이하면 0.6(시끄러운 곳), 사이는 선형."""
+    if snr_db >= hi_db:
+        return th_quiet
+    if snr_db <= lo_db:
+        return th_noisy
+    return round(th_noisy + (th_quiet - th_noisy) * (snr_db - lo_db) / (hi_db - lo_db), 3)
+
+
+def threshold_schedule(metric_db: np.ndarray, lo_db: float, hi_db: float, frame: int = 512,
+                       first_s: float = 10.0, every_s: float = 30.0, fn=None) -> list[tuple[int, float]]:
+    """[(시작 샘플, 민감도)]. 처음 10초 중앙값으로 정하고, 이후 30초마다 직전 30초 중앙값으로 다시 정한다(앞만 봄).
+
+    metric_db는 바닥 소음(adapt_threshold) 또는 SNR 추정치(adapt_threshold_snr, fn으로 넘김)."""
+    fn = fn or adapt_threshold
+    nz_db = metric_db
+    fps = SR / frame
+    n_first = max(1, int(first_s * fps))
+    sched = [(0, fn(float(np.median(nz_db[:n_first])), lo_db, hi_db))]
+    step = int(every_s * fps)
+    for k in range(step, len(nz_db), step):
+        th = fn(float(np.median(nz_db[k - step:k])), lo_db, hi_db)
+        if th != sched[-1][1]:
+            sched.append((k * frame, th))
+    return sched
+
+
+VAD_TH_USED: list[float] = []  # 결과에 남길 민감도 분포 (파일마다, 바뀐 구간마다 1개)
+ADAPT_SWITCHES: list[int] = []  # --adapt-defer: 파일마다 실제로 VAD를 다시 만든 횟수
+
+
+def _segments_deferred(x: np.ndarray, a, sched: list[tuple[int, float]], win: int) -> list[tuple[int, int]]:
+    """민감도가 새로 정해져도 바로 바꾸지 않는다(--adapt-defer).
+
+    - 직전 적용값과 0.05 이상 차이 날 때만 바꾼다.
+    - VAD가 닫혀 있을 때(is_speech_detected False) 바꾸고, 열려 있으면 닫힐 때까지 기다린다.
+      단 열린 채로 hard_max_speech(없으면 max_speech)초가 지나면 그때 바꾼다.
+    """
+    spans: list[tuple[int, int]] = []
+    limit = int((a.hard_max_speech or a.max_speech) * SR)
+    cur_th = sched[0][1]
+    cur, st0 = make_vad(a, cur_th), 0
+    VAD_TH_USED.append(cur_th)
+    switches, pending, k = 0, None, 1
+    open_since = None
+
+    def drain(v, base):
+        while not v.empty():
+            s = v.front
+            spans.append((base + s.start, base + s.start + len(s.samples)))
+            v.pop()
+
+    for i in range(0, len(x), win):
+        while k < len(sched) and sched[k][0] <= i:  # 이 시점까지 새로 정해진 민감도(가장 최근 것)
+            pending = sched[k][1]
+            k += 1
+        cur.accept_waveform(x[i:i + win])
+        drain(cur, st0)
+        speaking = cur.is_speech_detected()
+        if speaking and open_since is None:
+            open_since = i
+        elif not speaking:
+            open_since = None
+        if pending is not None:
+            if abs(pending - cur_th) < 0.05:
+                pending = None
+            elif not speaking or (open_since is not None and i + win - open_since >= limit):
+                cur.flush()
+                drain(cur, st0)
+                cur_th, pending = pending, None
+                st0 = i + win
+                cur = make_vad(a, cur_th)
+                VAD_TH_USED.append(cur_th)
+                switches += 1
+                open_since = None
+    cur.flush()
+    drain(cur, st0)
+    ADAPT_SWITCHES.append(switches)
+    return spans
+
+
+def segments(x: np.ndarray, a, vad, sched: list[tuple[int, float]] | None = None) -> list[np.ndarray]:
+    """앱처럼 VAD로 잘라 앞에 pad초를 붙인 구간들. vad가 None이면 통째로.
+
+    sched가 있으면 그 시점마다 민감도를 바꿔 VAD를 새로 만든다(sherpa VAD는 도중에 문턱을 못 바꿈).
+    """
     if vad is None:
         return [x]
-    vad.reset()
     spans = []
     win = 512
-    for i in range(0, len(x), win):
-        vad.accept_waveform(x[i:i + win])
-        while not vad.empty():
-            s = vad.front
-            spans.append((s.start, s.start + len(s.samples)))
-            vad.pop()
-    vad.flush()
-    while not vad.empty():
-        s = vad.front
-        spans.append((s.start, s.start + len(s.samples)))
-        vad.pop()
+    if sched is not None and getattr(a, "adapt_defer", False):
+        spans = _segments_deferred(x, a, sched, win)
+        sched = []  # 아래 일반 경로는 건너뛴다
+        cur = None
+    elif sched is None:
+        sched = [(0, a.vad_threshold)]
+        vad.reset()
+        cur = vad
+    else:
+        cur = None
+    bounds = [s for s, _ in sched[1:]] + [len(x)]
+    for (st0, th), en0 in zip(sched, bounds):
+        if cur is None:
+            cur = make_vad(a, th)
+            VAD_TH_USED.append(th)
+        for i in range(st0, en0, win):
+            cur.accept_waveform(x[i:min(i + win, en0)])
+            while not cur.empty():
+                s = cur.front
+                spans.append((st0 + s.start, st0 + s.start + len(s.samples)))
+                cur.pop()
+        cur.flush()
+        while not cur.empty():
+            s = cur.front
+            spans.append((st0 + s.start, st0 + s.start + len(s.samples)))
+            cur.pop()
+        cur = None
+    if a.hard_max_speech:
+        limit = int(a.hard_max_speech * SR)
+        spans = [p for st, en in spans for p in hard_split(x, st, en, limit)]
     out, prev_end = [], 0
     pad = int(a.pad * SR)
     tail = int(a.tail_pad * SR)
@@ -198,8 +362,29 @@ def main() -> None:
     ap.add_argument("--max-speech", type=float, default=20.0)
     ap.add_argument("--pad", type=float, default=0.3, help="구간 앞에 붙이는 초 (앱 링버퍼)")
     ap.add_argument("--tail-pad", type=float, default=0.0, help="구간 뒤에 붙이는 초")
+    ap.add_argument("--hard-max-speech", type=float, default=0.0,
+                    help="VAD 구간이 이 초보다 길면 에너지가 낮은 곳에서 강제로 자름 (0=끔)")
+    ap.add_argument("--vad-threshold-adapt", default="",
+                    help="LO_DB,HI_DB: 바닥 소음(dBFS)이 LO 이하면 민감도 0.4, HI 이상이면 0.6, 사이는 선형. "
+                         "처음 10초 중앙값으로 정하고 30초마다 다시 정해 바뀌면 VAD를 새로 만든다")
+    ap.add_argument("--vad-threshold-adapt-snr", default="",
+                    help="LO_DB,HI_DB: SNR 추정(agc식 말소리 크기 - 바닥 소음)이 HI 이상이면 민감도 0.4, LO 이하면 0.6, "
+                         "사이는 선형. 정하는 시점은 --vad-threshold-adapt와 같다")
+    ap.add_argument("--adapt-defer", action="store_true",
+                    help="adapt 민감도를 바로 바꾸지 않고 VAD가 닫혔을 때(또는 열린 채 hard-max초가 지났을 때), "
+                         "직전 값과 0.05 이상 다를 때만 바꾼다")
+    ap.add_argument("--vad-buffer", type=float, default=0.0,
+                    help="VAD 버퍼 초 (0이면 hard-max 켤 때 300, 아니면 max(60, max_speech*2))")
     ap.add_argument("--gain", default="none", choices=["none", "peak", "rms", "agc"])
     ap.add_argument("--gain-scope", default="segment", choices=["file", "segment"])
+    ap.add_argument("--agc-max-gain", type=float, default=20.0, help="agc 최대 이득(배)")
+    ap.add_argument("--agc-noise-ceil-db", type=float, default=None,
+                    help="agc: 키운 뒤 바닥 소음이 이 dBFS를 넘지 않게 이득 제한 (기본 끔)")
+    ap.add_argument("--agc-noise-init", default="fixed", choices=["fixed", "first"],
+                    help="agc 바닥 소음 시작값: fixed=1e-4, first=첫 프레임 크기")
+    ap.add_argument("--denoise", default="none", choices=["none", "gtcrn"],
+                    help="VAD 전에 파일 전체 잡음 줄이기 (순서: denoise -> gain -> VAD)")
+    ap.add_argument("--denoise-model", default="", help="기본 models/gtcrn_simple.onnx")
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--tag", default="")
@@ -219,6 +404,16 @@ def main() -> None:
     rec = make_recognizer(a)
     load_s = time.perf_counter() - t0
     vad = make_vad(a) if a.vad == "silero" else None
+    adapt = tuple(float(v) for v in a.vad_threshold_adapt.split(",")) if a.vad_threshold_adapt else None
+    adapt_snr = tuple(float(v) for v in a.vad_threshold_adapt_snr.split(",")) if a.vad_threshold_adapt_snr else None
+    denoiser = None
+    if a.denoise == "gtcrn":
+        dcfg = sherpa_onnx.OfflineSpeechDenoiserConfig(
+            model=sherpa_onnx.OfflineSpeechDenoiserModelConfig(
+                gtcrn=sherpa_onnx.OfflineSpeechDenoiserGtcrnModelConfig(
+                    model=a.denoise_model or str(Path(a.models) / "gtcrn_simple.onnx")),
+                num_threads=a.threads))
+        denoiser = sherpa_onnx.OfflineSpeechDenoiser(dcfg)
 
     errs = errs_sp = n_ref = n_ref_sp = 0
     audio_s = proc_s = 0.0
@@ -229,13 +424,21 @@ def main() -> None:
         assert sr == SR, r["wav"]
         audio_s += len(x) / SR
         t = time.perf_counter()
+        if denoiser is not None:  # 처리 시간(RTF)에 포함
+            x = np.asarray(denoiser.run(x, SR).samples, dtype=np.float32)
+        sched = None
+        if adapt and vad is not None:  # 크기 맞춤 전 원래 소리의 바닥 소음으로 민감도를 정한다
+            sched = threshold_schedule(noise_floor_db(x), *adapt)
+        elif adapt_snr and vad is not None:  # 말소리 크기 - 바닥 소음(SNR 추정)으로 정한다
+            nz_db, lv_db = track_noise_level(x)
+            sched = threshold_schedule(lv_db - nz_db, *adapt_snr, fn=adapt_threshold_snr)
         if a.gain_scope == "file":
-            x = apply_gain(x, a.gain)
-        segs = segments(x, a, vad)
+            x = apply_gain(x, a.gain, a)
+        segs = segments(x, a, vad, sched)
         hyps = []
         for s in segs:
             if a.gain_scope == "segment":
-                s = apply_gain(s, a.gain)
+                s = apply_gain(s, a.gain, a)
             st = rec.create_stream()
             st.accept_waveform(SR, s)
             rec.decode_stream(st)
@@ -262,6 +465,11 @@ def main() -> None:
         "rtf": round(proc_s / max(1e-9, audio_s), 4),
         "audio_min": round(audio_s / 60, 1), "load_s": round(load_s, 2),
         "segments": n_seg, "max_seg_s": round(max_seg, 1), "empty_hyp": empty,
+        **({"vad_th": {"mean": round(float(np.mean(VAD_TH_USED)), 3), "min": min(VAD_TH_USED),
+                       "max": max(VAD_TH_USED), "n": len(VAD_TH_USED)}} if (adapt or adapt_snr) and VAD_TH_USED else {}),
+        **({"adapt_switches": {"total": int(sum(ADAPT_SWITCHES)), "files": len(ADAPT_SWITCHES),
+                               "per_file_mean": round(float(np.mean(ADAPT_SWITCHES)), 2),
+                               "max": int(max(ADAPT_SWITCHES))}} if ADAPT_SWITCHES else {}),
         "cfg": {k: v for k, v in vars(a).items()
                 if k not in ("models", "data", "out", "dump", "tag", "set", "limit")},
         "host": f"{platform.system()}-{platform.machine()}",

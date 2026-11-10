@@ -159,11 +159,12 @@ def build_variants(name: str, test: list[dict], babble_pool: list[str], out: Pat
 
 
 def build_longform(name: str, test: list[dict], out: Path, seed: int,
-                   minutes: float = 5.0) -> None:
+                   minutes: float = 5.0, norm_db: float | None = None, suffix: str = "longform") -> None:
+    """norm_db를 주면 각 발화를 그 dBFS RMS로 맞춘 뒤 이어 붙인다(쉼·순서·seed는 같음)."""
     rng = random.Random(seed)
     items = test[:]
     rng.shuffle(items)
-    d = out / "audio" / f"{name}-longform"
+    d = out / "audio" / f"{name}-{suffix}"
     d.mkdir(parents=True, exist_ok=True)
     rows, buf, texts, idx = [], [], [], 0
     nrng = np.random.default_rng(seed)
@@ -181,6 +182,8 @@ def build_longform(name: str, test: list[dict], out: Path, seed: int,
     total = 0
     for r in items:
         x = read16k(r["wav"])
+        if norm_db is not None:
+            x = np.clip(x * (10 ** (norm_db / 20) / rms(x)), -1, 1).astype(np.float32)
         gap = int(rng.uniform(0.3, 2.5) * SR)
         floor = rms(x) * 10 ** (-35 / 20)  # 말소리보다 35dB 낮은 바닥 소음
         buf.append((nrng.standard_normal(gap) * floor).astype(np.float32))
@@ -191,7 +194,7 @@ def build_longform(name: str, test: list[dict], out: Path, seed: int,
             flush()
             total = 0
     flush()
-    write_manifest(out / f"{name}-longform.jsonl", rows)
+    write_manifest(out / f"{name}-{suffix}.jsonl", rows)
 
 
 def load_zeroth(raw_dir: Path) -> list[dict]:
@@ -219,10 +222,117 @@ def load_zeroth(raw_dir: Path) -> list[dict]:
     return rows
 
 
+def build_realistic(name: str, test: list[dict], pool: list[str], out: Path, seed: int) -> None:
+    """더 실제 같은 세트 3개 (scipy 필요).
+
+    longform-babble10  기존 longform 녹음 전체에 dev 발화 웅성거림을 SNR 10dB로 섞음
+    reverb             test 발화에 방 울림: 지수 감쇠 노이즈 임펄스 응답(RT60 0.5초) 컨볼루션
+    muffled            test 발화를 1차 저역통과 2kHz로 깎고 -10dB (주머니·가방 속)
+    """
+    from scipy.signal import fftconvolve, lfilter  # noqa: PLC0415
+
+    rng = random.Random(seed + 1)
+    # a. longform-babble10
+    rows = []
+    d = out / "audio" / f"{name}-longform-babble10"
+    d.mkdir(parents=True, exist_ok=True)
+    for r in (json.loads(l) for l in open(out / f"{name}-longform.jsonl", encoding="utf-8")):
+        x = read16k(r["wav"])
+        b = make_babble(len(x), pool, rng)
+        y = x + b * (rms(x) / rms(b)) / (10 ** (10 / 20))
+        y = y / max(1.0, float(np.max(np.abs(y))))
+        p = d / (r["id"] + ".wav")
+        sf.write(p, y, SR, subtype="PCM_16")
+        rows.append({**r, "wav": str(p)})
+    write_manifest(out / f"{name}-longform-babble10.jsonl", rows)
+
+    # b. reverb (RT60 0.5s, 같은 임펄스 응답을 모든 발화에)
+    nrng = np.random.default_rng(seed)
+    rt60 = 0.5
+    t = np.arange(int(rt60 * 1.2 * SR)) / SR
+    ir = nrng.standard_normal(len(t)) * np.exp(-6.908 * t / rt60)  # 60dB 감쇠 = e^-6.908
+    ir[0] = 1.0 + abs(ir[0])  # 직접음
+    ir = (ir / np.sqrt(np.sum(ir ** 2))).astype(np.float32)
+    rows = []
+    d = out / "audio" / f"{name}-reverb"
+    d.mkdir(parents=True, exist_ok=True)
+    for r in test:
+        x = read16k(r["wav"])
+        y = fftconvolve(x, ir)[: len(x)]
+        y = y * (rms(x) / rms(y))
+        y = y / max(1.0, float(np.max(np.abs(y))))
+        p = d / (r["id"] + ".wav")
+        sf.write(p, y.astype(np.float32), SR, subtype="PCM_16")
+        rows.append({**r, "wav": str(p)})
+    write_manifest(out / f"{name}-reverb.jsonl", rows)
+
+    # c. muffled (1차 저역통과 2kHz + -10dB)
+    alpha = 1 - np.exp(-2 * np.pi * 2000 / SR)
+    rows = []
+    d = out / "audio" / f"{name}-muffled"
+    d.mkdir(parents=True, exist_ok=True)
+    for r in test:
+        x = read16k(r["wav"])
+        y = lfilter([alpha], [1, -(1 - alpha)], x) * (10 ** (-10 / 20))
+        p = d / (r["id"] + ".wav")
+        sf.write(p, y.astype(np.float32), SR, subtype="PCM_16")
+        rows.append({**r, "wav": str(p)})
+    write_manifest(out / f"{name}-muffled.jsonl", rows)
+
+
+def build_crowd(name: str, pool: list[str], out: Path, seed: int, k: int = 8, snr: float = 10,
+                src_suffix: str = "longform", label: str = "crowd") -> None:
+    """사람 붐비는 소리에 가까운 긴 녹음 세트.
+
+    longform-tv10     기존 longform-babble10 과 같은 파일(발화 3개를 반복 재생 = 옆에서 TV가 또렷하게 말함)
+    longform-crowd10  dev 발화를 반복 없이 계속 바꿔 이어 붙인 트랙 k개를 겹친 웅성거림, SNR 10dB
+    """
+    src = out / f"{name}-longform-babble10.jsonl"
+    if label == "crowd" and src.exists():
+        write_manifest(out / f"{name}-longform-tv10.jsonl",
+                       [json.loads(l) for l in open(src, encoding="utf-8")])
+    rng = random.Random(seed + 2)
+    rows = []
+    d = out / "audio" / f"{name}-longform-{label}{int(snr)}"
+    d.mkdir(parents=True, exist_ok=True)
+    for r in (json.loads(l) for l in open(out / f"{name}-{src_suffix}.jsonl", encoding="utf-8")):
+        x = read16k(r["wav"])
+        n = len(x)
+        acc = np.zeros(n, dtype=np.float32)
+        for _ in range(k):
+            order = pool[:]
+            rng.shuffle(order)
+            parts, total = [], 0
+            for p in order:  # 한 트랙 안에서는 같은 발화를 다시 쓰지 않는다
+                y = read16k(p)
+                parts.append(y / rms(y))  # 녹음마다 크기가 달라 발화 단위로 맞춘다
+                total += len(y)
+                if total >= n:
+                    break
+            t = np.concatenate(parts)
+            if len(t) < n:  # dev 전체(약 46분)로도 모자라면 0으로 채움 (5분짜리라 실제로는 안 생김)
+                t = np.pad(t, (0, n - len(t)))
+            off = rng.randint(0, len(t) - n)
+            acc += t[off:off + n]
+        b = acc / k
+        y = x + b * (rms(x) / rms(b)) / (10 ** (snr / 20))
+        y = y / max(1.0, float(np.max(np.abs(y))))
+        p = d / (r["id"] + ".wav")
+        sf.write(p, y, SR, subtype="PCM_16")
+        rows.append({**r, "wav": str(p)})
+    write_manifest(out / f"{name}-longform-{label}{int(snr)}.jsonl", rows)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="data/stt")
     ap.add_argument("--zeroth", action="store_true")
+    ap.add_argument("--realistic", action="store_true",
+                    help="longform-babble10 / reverb / muffled 도 만든다 (scipy 필요)")
+    ap.add_argument("--crowd", action="store_true",
+                    help="longform-tv10(=babble10 이름만) / longform-crowd10 도 만든다")
+    ap.add_argument("--crowd-norm", action="store_true",
+                    help="발화마다 -23dBFS로 맞춘 longform-norm 과 longform-crowdn10 / crowdn5 를 만든다")
     ap.add_argument("--seed", type=int, default=20261109)
     a = ap.parse_args()
     out = Path(a.out)
@@ -237,6 +347,14 @@ def main() -> None:
     if a.zeroth:
         z = load_zeroth(raw)
         build_variants("zeroth", z, pool, out, a.seed)
+    if a.realistic:
+        build_realistic("fleurs", sp["test"], pool, out, a.seed)
+    if a.crowd:
+        build_crowd("fleurs", pool, out, a.seed)
+    if a.crowd_norm:  # 발화마다 -23dBFS로 맞춘 longform + 같은 방식의 crowd 웅성거림, SNR 10/5
+        build_longform("fleurs", sp["test"], out, a.seed, norm_db=-23.0, suffix="longform-norm")
+        for snr in (10, 5):
+            build_crowd("fleurs", pool, out, a.seed, snr=snr, src_suffix="longform-norm", label="crowdn")
 
 
 if __name__ == "__main__":
