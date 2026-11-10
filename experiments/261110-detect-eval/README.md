@@ -19,23 +19,26 @@
 
 | 파일 | 내용 |
 |---|---|
-| `evalset/stories.json` | 이야기 20개(웃김 9, 황당 6, 추억 5). 줄마다 화자, 펀치라인 줄 번호, 종류 |
-| `evalset/filler.json` | 이야기가 아닌 대화 30묶음(약속·날씨·주문 등). 6묶음은 "ㅋㅋ", "하하"가 섞였지만 이야기는 아닌 함정 |
+| `evalset/stories*.json` | 이야기 100개(웃김 45, 황당 30, 추억 25). 줄마다 화자, 펀치라인 줄 번호, 종류 |
+| `evalset/filler*.json` | 이야기가 아닌 대화 90묶음(약속·날씨·주문 등). 18묶음은 "ㅋㅋ", "하하"가 섞였지만 이야기는 아닌 함정(`near`) |
+
+어려운 이야기 15개를 일부러 섞었다(`hard`): 빌드업이 긴 것 5, 다른 사람이 펀치라인을 치는 것 7, 이야기 중간에 딴말이 끼는 것 3.
+이야기 100개면 재현율 0.7일 때 95% 범위가 약 ±0.09다(20개면 ±0.2). 그래서 0.1 넘는 차이는 진짜 차이로 볼 수 있다.
 
 `make_evalset.py`가 둘을 섞어 앱이 보내는 DetectMessage 모양으로 만든다(`--seed`가 같으면 늘 같은 결과).
 
 | 세트 | 녹음 | 정답 이야기 | 길이 | 용도 |
 |---|---|---|---|---|
-| `short-stt` | 5개 | 20 | 각 3~4분 | 주 지표. 짧은 입력 |
-| `long-stt` | 1개 | 20 | 26분, 300구간 | 실제 1시간 묶음처럼 긴 입력. 방송 소리 25구간 × 2 섞임 |
-| `short-clean`, `long-clean` | 위와 같음 | 20 | | 문장부호만 뺀 글. STT 오류가 얼마나 끌어내리는지 비교 |
-| `nostory-stt` | 1개 | 0 | 7분 | 평범한 대화 오탐 |
+| `short-stt` | 25개 | 100 | 각 3~5분 | 주 지표. 짧은 입력 |
+| `long-stt` | 4개 | 100 | 각 약 21분, 260구간 | 실제 1시간 묶음처럼 긴 입력. 방송 소리 25구간씩 섞임 |
+| `short-clean`, `long-clean` | 위와 같음 | 100 | | 문장부호만 뺀 글. STT 오류가 얼마나 끌어내리는지 비교 |
+| `nostory-stt` | 2개 | 0 | 각 10분 | 평범한 대화 오탐 |
 | `tv` | 1개 | 0 | 37분 | 방송 소리 오탐 (`sample_tv_37min.json` 그대로) |
 
-`-stt` 세트의 STT 흉내: 이어진 말 한 줄로 합치기(35%, 화자 섞임), 음절 약 7%에 받침 빠짐·비슷한 모음/자음·글자 빠짐,
+`-stt` 세트의 STT 흉내: 이어진 말 한 줄로 합치기(35%, 화자 섞임, 화제 경계는 넘지 않음), 음절 약 7%에 받침 빠짐·비슷한 모음/자음·글자 빠짐,
 띄어쓰기 흔들림, 짧은 잡음 줄. 실제 SenseVoice 결과(`sample_tv_37min.json`)처럼 보이게 맞췄다.
 
-예) `short-stt/short1`
+예)
 ```
 [5] 퇴근하고 너 피건해서 버스 타짜마자 졸았거든
 [8] 또 치길래 눈 떴더니 기삭림이야 손님 종점이에요 이러시는거야 근데 던 웃긴 건 그 벙스가차고지로 들어가 있었 어
@@ -59,6 +62,7 @@
 
 LLM은 같은 입력에도 흔들리므로 설정마다 3번 돌려 평균(최소~최대)을 적는다. 차이가 범위 안이면 "차이 없음".
 `--mock gold`(정답을 그대로 돌려주는 가짜 LLM)로 돌리면 모든 세트가 F1 1.0이 나오는 것을 확인했다.
+`--skip-speakers`는 화자 나누기를 부르지 않아 시간이 크게 준다(이야기 찾기만 비교할 때). `--limit N`은 세트마다 앞 N개 녹음만 돈다.
 
 ## 젯슨 1호에서 돌리는 법
 
@@ -78,10 +82,11 @@ export LLM_BASE_URL=http://$(sudo grep ^LLM_HOST /etc/lolog/llm.env | cut -d= -f
 export LLM_API_KEY=$(sudo grep ^LLM_API_KEY /etc/lolog/llm.env | cut -d= -f2)
 curl -s ${LLM_BASE_URL%/v1}/health                      # {"status":"ok"}
 
-# 3) 기준선 (tmux 안에서. 약 1~1.5시간)
-python3 run_eval.py --tag base --runs 3 \
-  --sets sets/short-stt sets/long-stt sets/short-clean sets/long-clean sets/nostory-stt sets/tv \
-  2>&1 | tee results-base.log
+# 3) 기준선 (tmux 안에서). 이야기 100개라 오래 걸리니 나눠서 돌린다
+#   3-1 주 지표 3번 (화자 포함)
+python3 run_eval.py --tag base --runs 3 --sets sets/short-stt sets/long-stt sets/nostory-stt sets/tv 2>&1 | tee results-base.log
+#   3-2 STT 오류 영향 1번 (이야기 찾기만)
+python3 run_eval.py --tag base-clean --runs 1 --skip-speakers --sets sets/short-clean sets/long-clean 2>&1 | tee results-base-clean.log
 
 # 4) 끝나면 워커 다시 켜기
 sudo systemctl start lolog-worker@detect
@@ -89,6 +94,18 @@ sudo systemctl start lolog-worker@detect
 
 마지막에 나오는 표와 `results/` 폴더를 보내 주면 아래에 옮긴다.
 다른 설정은 `--variant <이름> --tag <이름>`만 바꿔 같은 명령으로 돌린다(`variants.py`).
+개선 실험은 먼저 `--runs 1 --skip-speakers`로 short-stt·long-stt만 돌리고, 기준선과 0.05 넘게 차이 나는 것만 3번 확인한다.
+
+### 연구 서버(GPU)에서 돌리기
+
+정확도는 모델 파일과 프롬프트에 달려 있으므로 같은 GGUF를 연구 서버 GPU의 llama-server에 올리면 거의 같은 값이 나온다.
+프롬프트·온도 비교는 서버에서 빠르게 하고, 젯슨은 고른 설정의 시간·메모리 확인에만 쓴다.
+
+```bash
+llama-server -m Qwen3-4B-Instruct-2507-Q4_K_M.gguf --host 127.0.0.1 --port 8000 -c 24576 -np 1 -ngl 99 -fa on -ctk q8_0 -ctv q8_0 --jinja
+LLM_BASE_URL=http://127.0.0.1:8000/v1 python3 run_eval.py --tag srv-base --runs 3 --sets sets/short-stt sets/long-stt sets/nostory-stt sets/tv
+```
+젯슨과 같은 llama.cpp 버전·같은 옵션(-c, -ctk/-ctv q8_0, -fa)을 쓴다. 기준선은 젯슨과 서버 둘 다 재서 차이를 적어 둔다.
 
 ## 결과
 

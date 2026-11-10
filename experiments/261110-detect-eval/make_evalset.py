@@ -1,11 +1,11 @@
 """컨텐츠포인트 감지 평가셋 만들기. 표준 라이브러리만 쓴다(젯슨에서 그대로 돌아감).
 
-evalset/stories.json(정답이 붙은 이야기)과 evalset/filler.json(이야기가 아닌 대화)을 이어 붙여
+evalset/stories*.json(정답이 붙은 이야기 100개)과 evalset/filler*.json(이야기가 아닌 대화 90묶음)을 이어 붙여
 앱이 서버로 보내는 DetectMessage 모양의 녹음을 만들고, 정답(gold)을 같이 저장한다.
 
 세트
-  short-clean / short-stt   녹음 5개, 각 이야기 4개 + 잡담. 7~9분짜리
-  long-clean  / long-stt    녹음 1개, 이야기 20개 + 잡담 30묶음 + (있으면) 방송 소리 2군데. 실제 1시간 묶음에 가까운 긴 입력
+  short-clean / short-stt   녹음 25개, 각 이야기 4개 + 잡담. 3~5분짜리
+  long-clean  / long-stt    녹음 4개, 각 이야기 25개 + 잡담 22~23묶음 + (있으면) 방송 소리 1군데. 실제 1시간 묶음에 가까운 긴 입력
   nostory-stt               잡담만 (정답: 카드 0개)
   tv                        --tv 로 준 방송 녹음 STT 결과 그대로 (정답: 카드 0~1개)
 
@@ -167,8 +167,10 @@ def main() -> None:
     ap.add_argument("--rate", type=float, default=0.07, help="-stt 세트의 음절 오류 확률")
     args = ap.parse_args()
 
-    stories = json.loads((HERE / "evalset/stories.json").read_text())["stories"]
-    fillers = json.loads((HERE / "evalset/filler.json").read_text())["blocks"]
+    stories = [x for f in sorted((HERE / "evalset").glob("stories*.json"))
+               for x in json.loads(f.read_text())["stories"]]
+    fillers = [x for f in sorted((HERE / "evalset").glob("filler*.json"))
+               for x in json.loads(f.read_text())["blocks"]]
     for s in stories:
         s["type"] = "story"
     for f in fillers:
@@ -190,30 +192,40 @@ def main() -> None:
         print(f"{set_name}: 녹음 {len(recs)}개, 정답 이야기 {n_st}개")
 
     rng = random.Random(args.seed)
-    # short: 녹음 5개 × 이야기 4개, 이야기 사이에 잡담 1~2묶음
+    ns, nf = len(stories), len(fillers)
+    # short: 녹음마다 이야기 4개, 이야기 앞뒤로 잡담 1~2묶음
     order = stories[:]
     rng.shuffle(order)
     fpool = fillers[:]
     rng.shuffle(fpool)
-    short = []
-    for r in range(5):
-        items, fi = [], r * 6
-        items.append(fpool[fi % 30])
-        for k, st in enumerate(order[r * 4:(r + 1) * 4]):
+    short, fi = [], 0
+    for r in range(ns // 4):
+        items = []
+        for st in order[r * 4:(r + 1) * 4]:
+            for _ in range(rng.choice([1, 1, 2])):
+                items.append(fpool[fi % nf])
+                fi += 1
             items.append(st)
-            items += [fpool[(fi + 1 + k) % 30]] + ([fpool[(fi + 5) % 30]] if k == 1 else [])
-        short.append((f"short{r + 1}", items))
-    # long: 전부 + 방송 두 군데
-    lst = stories[:] + fillers[:]
-    rng.shuffle(lst)
-    lst = [x for x in lst]  # 이야기끼리 바로 붙는 경우도 생김(실제 대화처럼)
-    tvs = tv_excerpts(tv_path, 2, 25, rng)
-    for k, tv in enumerate(tvs):
-        lst.insert((k + 1) * len(lst) // 3, tv)
-    long = [("long1", lst)]
+        items.append(fpool[fi % nf])
+        fi += 1
+        short.append((f"short{r + 1:02d}", items))
+    # long: 이야기 25개씩 녹음 4개(각 30분 남짓). 잡담을 고루 나누고 방송 소리를 한 군데씩 넣음
+    order = stories[:]
+    rng.shuffle(order)
+    fpool = fillers[:]
+    rng.shuffle(fpool)
+    n_long = max(1, ns // 25)
+    tvs = tv_excerpts(tv_path, n_long, 25, rng)
+    long = []
+    for r in range(n_long):
+        lst = order[r::n_long] + fpool[r::n_long]
+        rng.shuffle(lst)  # 이야기끼리 바로 붙는 경우도 생김(실제 대화처럼)
+        if tvs:
+            lst.insert(rng.randint(len(lst) // 4, 3 * len(lst) // 4), tvs[r])
+        long.append((f"long{r + 1}", lst))
     noitems = fillers[:]
     rng.shuffle(noitems)
-    nostory = [("nostory1", noitems)]
+    nostory = [("nostory1", noitems[: nf // 2]), ("nostory2", noitems[nf // 2:])]
 
     for stt in (False, True):
         suf = "stt" if stt else "clean"

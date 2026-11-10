@@ -11,10 +11,11 @@
   fp              정답과 짝이 없는 카드 수. nostory·tv 세트는 이것이 곧 오탐
   fmt             JSON·길이 오류로 녹음 하나가 통째로 실패한 수 + 형식 검사로 버려진 카드 수
   time            녹음당 처리 시간 합(초)
+  --skip-speakers 면 spk는 비고(-), 나머지 지표는 같다
 
 예)
   python3 run_eval.py --sets sets/short-stt sets/long-stt sets/nostory-stt sets/tv --runs 3 --tag base
-  python3 run_eval.py --sets sets/short-clean --variant temp0 --tag temp0
+  python3 run_eval.py --sets sets/short-stt --variant temp0 --tag temp0 --runs 1 --skip-speakers
   python3 run_eval.py --sets sets/short-stt --mock gold --runs 1 --tag selftest   # LLM 없이 채점기 확인 (F1=1이 나와야 함)
 """
 
@@ -45,12 +46,18 @@ LATE_S = 3.0
 # ---------- LLM 감싸기: 호출을 기록하고 온도를 바꾼다 ----------
 
 class RecLlm(Llm):
-    def __init__(self, *a, temperature: float = 0.2, **kw):
+    def __init__(self, *a, temperature: float = 0.2, skip_speakers: bool = False, **kw):
         super().__init__(*a, **kw)
         self.temperature = temperature
+        self.skip_speakers = skip_speakers
         self.calls: list[dict] = []
 
     def chat_json(self, system, user, schema, name, temperature=None, max_tokens=2048):
+        if name == "speakers" and self.skip_speakers:  # 이야기 찾기만 잴 때: 화자는 부르지 않고 한 명으로 채움
+            res = {"lines": [{"seg": first_seg(user), "speaker": "화자1", "text": "-"}]}
+            stat = {"wall_s": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "finish_reason": "stop"}
+            self.calls.append({"name": name, "user": user, "result": res, "stat": stat, "skipped": True})
+            return res, stat
         res, stat = super().chat_json(system, user, schema, name,
                                       temperature=self.temperature, max_tokens=max_tokens)
         self.calls.append({"name": name, "user": user, "result": res, "stat": stat})
@@ -108,6 +115,7 @@ def predictions(result: dict, calls: list[dict], sents: list[dict]) -> list[dict
     by_start = {s["startMs"]: i for i, s in enumerate(sents)}
     by_end = {s["endMs"]: i for i, s in enumerate(sents)}
     spk_calls = {first_seg(c["user"]): c["result"].get("lines", []) for c in calls if c["name"] == "speakers"}
+    skipped = {first_seg(c["user"]) for c in calls if c.get("skipped")}
     out = []
     for c in result["cards"]:
         f, t = by_start[c["startMs"]], by_end[c["endMs"]]
@@ -115,7 +123,8 @@ def predictions(result: dict, calls: list[dict], sents: list[dict]) -> list[dict
         for l in spk_calls.get(f, []):
             seg_spk.setdefault(l["seg"], []).append(l["speaker"])
         out.append({"from": f, "to": t, "kind": c["kind"], "summary": c["summary"],
-                    "speakers": {k: max(set(v), key=v.count) for k, v in seg_spk.items()}})
+                    "speakers": None if f in skipped else
+                    {k: max(set(v), key=v.count) for k, v in seg_spk.items()}})
     return out
 
 
@@ -164,7 +173,7 @@ def score_rec(preds, gold, sents) -> dict:
         r["start_err"].append(abs(ds))
         r["end_err"].append(abs(de))
         r["late"] += ds > LATE_S
-        ok, tot = speaker_score(p, g)
+        ok, tot = speaker_score(p, g) if p["speakers"] is not None else (0, 0)
         r["spk_ok"] += ok
         r["spk_total"] += tot
         r["pairs"].append({"gold": g["id"], "pred": [p["from"], p["to"]], "gold_span": [g["from"], g["to"]],
@@ -202,11 +211,10 @@ def aggregate(recs: list[dict]) -> dict:
     }
 
 
-def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter) -> list[dict]:
+def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter, limit: int | None) -> list[dict]:
     recs = []
-    for f in sorted(set_dir.glob("*.json")):
-        if f.name.endswith(".gold.json"):
-            continue
+    files = [f for f in sorted(set_dir.glob("*.json")) if not f.name.endswith(".gold.json")]
+    for f in files[:limit]:
         msg = json.loads(f.read_text())
         gold = json.loads(f.with_name(f.stem + ".gold.json").read_text())
         sents = sorted(msg["sentences"], key=lambda s: s["startMs"])
@@ -253,6 +261,9 @@ def main() -> None:
     ap.add_argument("--api-key", default=os.environ.get("LLM_API_KEY"))
     ap.add_argument("--model", default=os.environ.get("LLM_MODEL", "local"))
     ap.add_argument("--mock", choices=["gold"])
+    ap.add_argument("--skip-speakers", action="store_true",
+                    help="화자 나누기를 부르지 않음(이야기 찾기만 비교할 때, 시간 약 1/3)")
+    ap.add_argument("--limit", type=int, help="세트마다 앞에서 N개 녹음만 (빠른 확인용)")
     ap.add_argument("--out", default=str(HERE / "results"))
     args = ap.parse_args()
 
@@ -265,7 +276,8 @@ def main() -> None:
     if args.mock:
         llm = GoldLlm()
     else:
-        llm = RecLlm(args.base_url, args.model, args.api_key, temperature=v.get("temperature", 0.2))
+        llm = RecLlm(args.base_url, args.model, args.api_key, temperature=v.get("temperature", 0.2),
+                     skip_speakers=args.skip_speakers)
         llm.wait_ready(60)
 
     out = Path(args.out) / args.tag
@@ -275,13 +287,14 @@ def main() -> None:
         print(f"[{args.tag}] {run}/{args.runs}번째", flush=True)
         for sd in args.sets:
             sd = Path(sd)
-            recs = run_set(sd, llm, bool(args.mock), drop)
+            recs = run_set(sd, llm, bool(args.mock), drop, args.limit)
             agg = aggregate(recs)
             table.setdefault(sd.name, []).append(agg)
             (out / f"{sd.name}.run{run}.json").write_text(
                 json.dumps({"agg": agg, "recs": recs}, ensure_ascii=False, indent=1))
             with open(Path(args.out) / "results.jsonl", "a") as fp:
                 fp.write(json.dumps({"tag": args.tag, "variant": args.variant, "set": sd.name, "run": run,
+                                     "skip_speakers": args.skip_speakers, "limit": args.limit,
                                      "time": time.strftime("%Y-%m-%d %H:%M"), **agg}, ensure_ascii=False) + "\n")
 
     keys = ["F1", "P", "R", "punch", "start", "end", "late", "kind", "spk", "fp", "fp_per_h", "fmt", "time"]
