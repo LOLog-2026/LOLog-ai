@@ -26,6 +26,7 @@ import itertools
 import json
 import logging
 import os
+import random
 import statistics
 import sys
 import time
@@ -46,11 +47,23 @@ LATE_S = 3.0
 # ---------- LLM 감싸기: 호출을 기록하고 온도를 바꾼다 ----------
 
 class RecLlm(Llm):
-    def __init__(self, *a, temperature: float = 0.2, skip_speakers: bool = False, **kw):
+    def __init__(self, *a, temperature: float = 0.2, skip_speakers: bool = False,
+                 chunk: dict | None = None, verify: dict | None = None, **kw):
         super().__init__(*a, **kw)
         self.temperature = temperature
         self.skip_speakers = skip_speakers
+        self.chunk = chunk          # {"min": 창 길이(분), "overlap": 겹침(분)}. 있으면 이야기 찾기를 시간 창으로 나눠 부른다
+        self.verify = verify        # {"system", "reason": bool, "min_score"}. 있으면 후보마다 1~5점을 매겨 거른다
+        self.cur_sents: list[dict] = []  # run_set이 녹음마다 채움(detect()와 같은 startMs 정렬)
         self.calls: list[dict] = []
+        self.rng = random.Random()
+
+    def _post(self, path, body):
+        # 요청마다 seed를 새로 뽑는다. 안 주면 같은 실행 안의 반복끼리 비슷하게 나와(서버 seed 고정)
+        # 3번 범위가 실제 흔들림보다 좁게 잡혔다(같은 설정의 nostory2 오탐이 실행마다 7 / 13 / 19)
+        if path == "/chat/completions":
+            body = {**body, "seed": self.rng.randrange(1, 2**31)}
+        return super()._post(path, body)
 
     def chat_json(self, system, user, schema, name, temperature=None, max_tokens=2048):
         if name == "speakers" and self.skip_speakers:  # 이야기 찾기만 잴 때: 화자는 부르지 않고 한 명으로 채움
@@ -58,10 +71,70 @@ class RecLlm(Llm):
             stat = {"wall_s": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "finish_reason": "stop"}
             self.calls.append({"name": name, "user": user, "result": res, "stat": stat, "skipped": True})
             return res, stat
-        res, stat = super().chat_json(system, user, schema, name,
-                                      temperature=self.temperature, max_tokens=max_tokens)
-        self.calls.append({"name": name, "user": user, "result": res, "stat": stat})
+        if name == "detect" and self.chunk:
+            res, stat = self._detect_chunked(system, user, schema, max_tokens)
+        else:
+            res, stat = super().chat_json(system, user, schema, name,
+                                          temperature=self.temperature, max_tokens=max_tokens)
+            self.calls.append({"name": name, "user": user, "result": res, "stat": stat})
+        if name == "detect" and self.verify:
+            res = self._verify(user, res)
         return res, stat
+
+    def _verify(self, user, res):
+        """확인 단계 실험: 후보(워커와 같은 tidy를 거친 것)마다 그 구간만 보여 주고 1~5점을 받는다.
+        점수와 구간을 calls에 남겨 sweep_verify.py가 기준 점수별 결과를 다시 계산한다. 호출이 실패하면 거르지 않고 남긴다."""
+        lines = user.split("\n")
+        stories = det.tidy([s for s in res.get("stories", []) if 0 <= s["from"] <= s["to"] < len(lines)])
+        props = {"score": {"type": "integer", "enum": [1, 2, 3, 4, 5]}}
+        if self.verify.get("reason"):
+            props = {"reason": {"type": "string", "maxLength": 60}, **props}
+        schema = {"type": "object", "properties": props, "required": list(props)}
+        kept = []
+        for s in stories:
+            sub = "\n".join(lines[s["from"]:s["to"] + 1])
+            try:
+                r, st = super().chat_json(self.verify["system"], sub, schema, "verify",
+                                          temperature=self.temperature, max_tokens=1024)
+                score = r.get("score")
+            except LlmError as e:
+                r, st, score = {"error": str(e)}, {}, None
+            self.calls.append({"name": "verify", "user": sub, "result": r, "stat": st,
+                               "span": [s["from"], s["to"]], "score": score})
+            if score is None or score >= self.verify.get("min_score", 1):
+                kept.append(s)
+        return {"stories": kept}
+
+    def _detect_chunked(self, system, user, schema, max_tokens):
+        """긴 입력 나누기 실험: 시간 창(min분, overlap분 겹침)마다 따로 찾고 합친다.
+        줄 번호는 원래 번호를 그대로 넣으므로 다시 맞출 필요가 없고, 겹친 곳의 중복은 워커의 tidy()가 긴 쪽만 남긴다."""
+        lines = user.split("\n")
+        sents = self.cur_sents
+        assert len(lines) == len(sents), "cur_sents가 입력과 맞지 않음"
+        win, step = self.chunk["min"] * 60000, (self.chunk["min"] - self.chunk["overlap"]) * 60000
+        t0, t_end = sents[0]["startMs"], sents[-1]["startMs"]
+        windows, w = [], t0
+        while True:
+            idx = [i for i, s in enumerate(sents) if w <= s["startMs"] < w + win]
+            if idx:
+                windows.append(idx)
+            if w + win > t_end:
+                break
+            w += step
+        stories, stat_sum = [], {"wall_s": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "finish_reason": "stop"}
+        for idx in windows:
+            sub = "\n".join(lines[i] for i in idx)
+            res, stat = super().chat_json(system, sub, schema, "detect",
+                                          temperature=self.temperature, max_tokens=max_tokens)
+            self.calls.append({"name": "detect", "user": sub, "result": res, "stat": stat})
+            lo, hi = idx[0], idx[-1]
+            stories += [s for s in res.get("stories", []) if lo <= s["from"] <= s["to"] <= hi]
+            for k in ("wall_s", "prompt_tokens", "completion_tokens"):
+                stat_sum[k] += stat.get(k) or 0
+            if stat.get("finish_reason") != "stop":
+                stat_sum["finish_reason"] = stat.get("finish_reason")
+        stat_sum["windows"] = len(windows)
+        return {"stories": stories}, stat_sum
 
 
 class GoldLlm:
@@ -219,6 +292,7 @@ def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter, limit: int | None
         gold = json.loads(f.with_name(f.stem + ".gold.json").read_text())
         sents = sorted(msg["sentences"], key=lambda s: s["startMs"])
         llm.calls = []
+        llm.cur_sents = sents
         if mock:
             llm.gold = gold
         drop.n = 0
@@ -234,7 +308,10 @@ def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter, limit: int | None
         r.update(rec=f.stem, fmt_fail=fmt_fail, error=err, dropped=drop.n, wall_s=round(wall, 1),
                  dur_s=(sents[-1]["endMs"] - sents[0]["startMs"]) / 1000 if sents else 0,
                  prompt_tok=sum(c["stat"].get("prompt_tokens") or 0 for c in llm.calls),
-                 raw_detect=[c["result"] for c in llm.calls if c["name"] == "detect"])
+                 raw_detect=[c["result"] for c in llm.calls if c["name"] == "detect"],
+                 verify=[{"span": c["span"], "score": c["score"], "reason": c["result"].get("reason") or c["result"].get("error"),
+                          "wall_s": c["stat"].get("wall_s"), "out_tok": c["stat"].get("completion_tokens")}
+                         for c in llm.calls if c["name"] == "verify"])
         recs.append(r)
         print(f"  {set_dir.name}/{f.stem}: 카드 {r['n_pred']} 정답 {r['n_gold']} 맞음 {r['n_match']} "
               f"오탐 {len(r['fp'])} {wall:.0f}s{' 실패: ' + err if err else ''}", flush=True)
@@ -277,7 +354,7 @@ def main() -> None:
         llm = GoldLlm()
     else:
         llm = RecLlm(args.base_url, args.model, args.api_key, temperature=v.get("temperature", 0.2),
-                     skip_speakers=args.skip_speakers)
+                     skip_speakers=args.skip_speakers, chunk=v.get("detect_chunk"), verify=v.get("verify"))
         llm.wait_ready(60)
 
     out = Path(args.out) / args.tag

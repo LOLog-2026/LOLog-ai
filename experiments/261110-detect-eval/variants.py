@@ -52,7 +52,41 @@ VARIANTS: dict[str, dict] = {
     "p-all": {"detect_replace": [(OLD_MULTI, NEW_MULTI)]},
     # 쌓기: 3번 확인에서 이긴 p-kind 위에 하나씩 얹는다
     "kind+all": {"detect_replace": [(OLD_KINDS, NEW_KINDS), (OLD_MULTI, NEW_MULTI)]},
+    # 긴 입력 나누기(run_eval.RecLlm에서 처리): 시간 창마다 따로 찾고 합침. long2(24분)에서 가운데 재현율이 0.31까지 떨어짐
+    # 창 15분이면 1시간 묶음은 5번, 8분이면 9번 부름. 겹침은 이야기 최대 길이(약 3분)보다 길게 둔다
+    "chunk15": {"detect_chunk": {"min": 15, "overlap": 4}},
+    "chunk8": {"detect_chunk": {"min": 8, "overlap": 3}},
+    "kind+chunk15": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 15, "overlap": 4}},
+    "kind+chunk8": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3}},
 }
+
+# ---- 확인 단계(run_eval.RecLlm에서 처리): 찾은 후보마다 그 구간만 보여 주고 1~5점을 매긴다 ----
+# 측정 때는 다 남기고(min_score 1) 점수만 기록한 뒤, 몇 점 이상 남길지는 sweep_verify.py로 고른다.
+# 평가셋 문구는 쓰지 않고 일반 범주만 적는다
+VERIFY_SYSTEM = """다음은 친구들 대화를 폰 음성 인식으로 받아 적은 기록 중 한 부분이다. 문장부호가 없고 글자가 자주 틀리니 소리가 비슷한 말로 짐작해서 읽는다.
+이 부분이 나중에 4컷 만화 카드로 다시 보고 싶을 만한 "이야기"인지 판단한다.
+
+이야기
+- 누군가 겪었거나 벌어진 일이 있고, 웃기거나 어이없거나 오래 기억할 만한 지점이 있다
+- 듣는 사람이 웃거나 놀라거나 되묻는 등 반응한다(웃음소리가 없어도 된다)
+
+이야기가 아님
+- 무엇을 먹을지, 언제 어디서 만날지, 무엇을 살지 정하는 대화
+- 물건이나 정보를 묻고 답하는 대화, 지금 하는 일이나 할 일을 알리는 말, 안부, 날씨
+- 맞장구나 감탄, 웃음만 있고 일어난 일이 없는 대화
+- TV·유튜브·라디오처럼 틀어 둔 방송 소리(진행자 멘트, 광고, 노래 가사)
+
+score: 1 확실히 이야기가 아님, 2 아마 아님, 3 애매함, 4 아마 이야기, 5 확실한 이야기"""
+
+VERIFY_REASON = {"system": VERIFY_SYSTEM + "\nreason에 판단 이유를 한 문장(40자 이내)으로 먼저 쓰고 score를 매긴다", "reason": True}
+VERIFY_SCORE = {"system": VERIFY_SYSTEM, "reason": False}
+
+VARIANTS.update({
+    "kc8+verify": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
+                   "verify": VERIFY_REASON},
+    "kc8+verify-s": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
+                     "verify": VERIFY_SCORE},
+})
 
 
 def apply(det_module, v: dict) -> None:

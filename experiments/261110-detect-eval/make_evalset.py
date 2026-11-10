@@ -7,6 +7,7 @@ evalset/stories*.json(정답이 붙은 이야기 100개)과 evalset/filler*.json
   short-clean / short-stt   녹음 25개, 각 이야기 4개 + 잡담. 3~5분짜리
   long-clean  / long-stt    녹음 4개, 각 이야기 25개 + 잡담 22~23묶음 + (있으면) 방송 소리 1군데. 실제 1시간 묶음에 가까운 긴 입력
   nostory-stt               잡담만 (정답: 카드 0개)
+  chat-stt                  잡담만 녹음 8개(약 11분씩). 같은 잡담을 다른 순서로 엮어 오탐 측정을 덜 흔들리게 함
   longstory-clean / -stt    (evalset/longstories*.json이 있으면) 녹음 20개, 각 긴 이야기(15~36줄) 2개 + 잡담
   long2-clean / long2-stt   (같은 조건) 녹음 12개, 각 짧은 이야기 15 + 긴 이야기 4 + 잡담 18 + 방송 1군데. long보다 녹음이 많아 덜 흔들림
   tv                        --tv 로 준 방송 녹음 STT 결과 그대로 (정답: 카드 0~1개)
@@ -274,6 +275,15 @@ def main() -> None:
                 lst.insert(rng2.randint(len(lst) // 4, 3 * len(lst) // 4), tvs2[r])
             long2.append((f"long2_{r + 1:02d}", lst))
 
+    # chat: 평범한 대화 녹음 8개(각 잡담 45묶음, 약 11분). nostory(2개)로는 오탐이 실행마다 7~19개로 흔들려
+    # 비교가 안 됨. 같은 잡담을 순서·이웃을 바꿔 다시 엮는다(묶음은 녹음마다 겹쳐 쓰임)
+    rng3 = random.Random(f"{args.seed}-chat")
+    chat = []
+    for r in range(8):
+        lst = fillers[:]
+        rng3.shuffle(lst)
+        chat.append((f"chat{r + 1}", lst[:45]))
+
     for stt in (False, True):
         suf = "stt" if stt else "clean"
         write(f"short-{suf}", short, stt)
@@ -282,6 +292,7 @@ def main() -> None:
             write(f"longstory-{suf}", longstory, stt)
             write(f"long2-{suf}", long2, stt)
     write("nostory-stt", nostory, True)
+    write("chat-stt", chat, True)
     if tv_path:
         d = out / "tv"
         d.mkdir(parents=True, exist_ok=True)
