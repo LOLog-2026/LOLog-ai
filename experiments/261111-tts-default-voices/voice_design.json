@@ -1,108 +1,80 @@
 {
-  "version": 1,
+  "version": 2,
   "language": "Korean",
-  "note": "instruct는 Qwen3-TTS VoiceDesign용 영어 목소리 설명, refText는 그 목소리로 처음 읽힐 한국어 기준 문장(참조 음성 대본). previewLine은 앱 콘티 수정 화면의 프로필 미리 듣기 버튼용 짧은 인사",
-  "previewLine": "안녕하세요! 만나서 반가워요.",
-  "sampleLines": [
-    "아니 잠깐만, 그게 진짜라고? 말도 안 돼, 나 완전 웃겨서 죽는 줄 알았잖아!",
-    "그래서 내가 뭐라고 했냐면, 아무 말도 안 하고 조용히 문 닫고 나왔지."
-  ],
+  "note": "모든 화자가 같은 문장(text)을 읽고 목소리만 다르다. instruct는 그림의 나이대·성별·인상을 보고 쓴 Qwen3-TTS VoiceDesign용 영어 목소리 설명",
+  "text": "안녕하세요! 만나서 반가워요.",
   "voices": {
     "kid-f-01": {
-      "instruct": "An eight-year-old Korean girl. High, bright, clear child voice, cheerful and a little sing-song, speaks politely and neatly with lively intonation.",
-      "refText": "엄마, 오늘 학교에서 선생님이 나 칭찬해 주셨어! 그림 제일 예쁘게 그렸대. 진짜야!"
+      "instruct": "An eight-year-old Korean girl. High, bright, clear child voice, cheerful and a little sing-song, speaks politely and neatly with lively intonation. Speaking as if greeting someone for the first time."
     },
     "kid-f-02": {
-      "instruct": "An eight-year-old Korean girl who is bookish and a bit of a know-it-all. High-pitched child voice, crisp articulation, slightly fast, confident explaining tone.",
-      "refText": "그거 아니거든? 공룡은 원래 새랑 친척이야. 내가 책에서 다 읽었단 말이야."
+      "instruct": "An eight-year-old Korean girl who is bookish and a bit of a know-it-all. High-pitched child voice, crisp articulation, slightly fast, confident explaining tone. Speaking as if greeting someone for the first time."
     },
     "kid-f-03": {
-      "instruct": "An eight-year-old Korean girl, shy and gentle. Soft, slightly breathy high child voice, speaks a bit slowly and quietly, sweet and timid.",
-      "refText": "음… 나도 같이 놀아도 돼? 나 숨바꼭질 진짜 잘하는데… 진짜로."
+      "instruct": "An eight-year-old Korean girl, shy and gentle. Soft, slightly breathy high child voice, speaks a bit slowly and quietly, sweet and timid. Speaking as if greeting someone for the first time."
     },
     "kid-f-04": {
-      "instruct": "An eight-year-old Korean girl, tomboyish and full of energy. Bright child voice with a slightly raspy edge, loud, quick and playful, giggles easily.",
-      "refText": "야, 너 그거 못 하지? 나는 한 번에 했다! 히히, 내가 이겼어, 내가 이겼어!"
+      "instruct": "An eight-year-old Korean girl, tomboyish and full of energy. Bright child voice with a slightly raspy edge, loud, quick and playful, giggles easily. Speaking as if greeting someone for the first time."
     },
     "kid-m-01": {
-      "instruct": "An eight-year-old Korean boy, mischievous troublemaker. High child voice, loud and bouncy, speaks fast with exaggerated excitement.",
-      "refText": "아빠! 나 방금 개구리 잡았어! 엄청 커! 근데 도망갔어. 다시 잡으러 갈래!"
+      "instruct": "An eight-year-old Korean boy, mischievous troublemaker. High child voice, loud and bouncy, speaks fast with exaggerated excitement. Speaking as if greeting someone for the first time."
     },
     "kid-m-02": {
-      "instruct": "An eight-year-old Korean boy, timid and serious bookworm. Light, thin child voice, slightly nasal, speaks carefully and a little hesitantly.",
-      "refText": "어… 그건 내 생각엔 좀 위험한 것 같은데. 선생님한테 먼저 물어보는 게 어때?"
+      "instruct": "An eight-year-old Korean boy, timid and serious bookworm. Light, thin child voice, slightly nasal, speaks carefully and a little hesitantly. Speaking as if greeting someone for the first time."
     },
     "kid-m-03": {
-      "instruct": "An eight-year-old Korean boy, sporty and boastful. Energetic child voice, slightly lower and husky for his age, confident and cheeky.",
-      "refText": "내가 오늘 축구에서 골 세 개나 넣었다? 형들도 나 못 막았어. 완전 대박이지?"
+      "instruct": "An eight-year-old Korean boy, sporty and boastful. Energetic child voice, slightly lower and husky for his age, confident and cheeky. Speaking as if greeting someone for the first time."
     },
     "kid-m-04": {
-      "instruct": "An eight-year-old Korean boy, neat and well-mannered model student. Clear, calm child voice, polite, speaks in tidy complete sentences, a bit serious.",
-      "refText": "할머니, 안녕하세요. 숙제는 벌써 다 했어요. 이제 피아노 연습하러 갈게요."
+      "instruct": "An eight-year-old Korean boy, neat and well-mannered model student. Clear, calm child voice, polite, speaks in tidy complete sentences, a bit serious. Speaking as if greeting someone for the first time."
     },
     "young-f-01": {
-      "instruct": "A Korean woman in her mid twenties. Warm, soft, mid-high voice, gentle and friendly, relaxed natural conversational tone with a smile in her voice.",
-      "refText": "오늘 날씨 진짜 좋다. 우리 이따가 카페 가서 케이크 하나 먹고 산책할래?"
+      "instruct": "A Korean woman in her mid twenties. Warm, soft, mid-high voice, gentle and friendly, relaxed natural conversational tone with a smile in her voice. Speaking as if greeting someone for the first time."
     },
     "young-f-02": {
-      "instruct": "A Korean woman in her late twenties, smart office worker. Clear, composed medium-pitch voice, crisp articulation, cool and slightly dry witty tone.",
-      "refText": "회의는 삼 분 안에 끝냅시다. 결론부터 말할게요. 이번 건은 다시 하는 게 맞아요."
+      "instruct": "A Korean woman in her late twenties, smart office worker. Clear, composed medium-pitch voice, crisp articulation, cool and slightly dry witty tone. Speaking as if greeting someone for the first time."
     },
     "young-f-03": {
-      "instruct": "A Korean woman in her early twenties, sporty and outgoing. Bright, energetic voice, fast-paced, loud laughter, very expressive and upbeat.",
-      "refText": "야 대박! 나 오늘 아침에 오 킬로 뛰었어. 완전 상쾌해! 너도 내일 같이 뛰자!"
+      "instruct": "A Korean woman in her early twenties, sporty and outgoing. Bright, energetic voice, fast-paced, loud laughter, very expressive and upbeat. Speaking as if greeting someone for the first time."
     },
     "young-f-04": {
-      "instruct": "A Korean woman in her early twenties, laid-back gamer type. Slightly low, husky female voice, deadpan and lazy delivery, monotone with dry humor.",
-      "refText": "아 몰라, 오늘은 그냥 집에서 게임만 할 거야. 밖에 나가는 거 너무 귀찮아."
+      "instruct": "A Korean woman in her early twenties, laid-back gamer type. Slightly low, husky female voice, deadpan and lazy delivery, monotone with dry humor. Speaking as if greeting someone for the first time."
     },
     "young-m-01": {
-      "instruct": "A Korean man in his mid twenties, ordinary friendly guy. Clear, medium-pitched male voice, casual and easygoing, natural speaking pace.",
-      "refText": "야, 밥 먹었어? 아직이면 같이 국밥 먹으러 가자. 내가 오늘 쏠게."
+      "instruct": "A Korean man in his mid twenties, ordinary friendly guy. Clear, medium-pitched male voice, casual and easygoing, natural speaking pace. Speaking as if greeting someone for the first time."
     },
     "young-m-02": {
-      "instruct": "A Korean man in his late twenties, gentle artsy type. Soft, mellow, slightly breathy tenor voice, calm and kind, speaks slowly and warmly.",
-      "refText": "이 노래 한번 들어 볼래? 비 오는 날 들으면 진짜 좋아. 마음이 좀 편해지더라."
+      "instruct": "A Korean man in his late twenties, gentle artsy type. Soft, mellow, slightly breathy tenor voice, calm and kind, speaks slowly and warmly. Speaking as if greeting someone for the first time."
     },
     "young-m-03": {
-      "instruct": "A Korean man in his early twenties, athletic and hyper. Loud, energetic male voice, slightly raspy, fast, enthusiastic like a sports fan shouting.",
-      "refText": "가자 가자! 한 세트만 더! 할 수 있어! 와, 방금 그거 봤어? 완전 미쳤다!"
+      "instruct": "A Korean man in his early twenties, athletic and hyper. Loud, energetic male voice, slightly raspy, fast, enthusiastic like a sports fan shouting. Speaking as if greeting someone for the first time."
     },
     "young-m-04": {
-      "instruct": "A Korean man in his late twenties, nerdy and serious engineer. Slightly nasal medium-low male voice, flat and precise delivery, a little awkward.",
-      "refText": "그러니까 원인은 세 가지로 볼 수 있어. 첫째, 전원이 안 켜져 있었고. 둘째…"
+      "instruct": "A Korean man in his late twenties, nerdy and serious engineer. Slightly nasal medium-low male voice, flat and precise delivery, a little awkward. Speaking as if greeting someone for the first time."
     },
     "middle-f-01": {
-      "instruct": "A Korean woman in her fifties, chatty neighborhood auntie. Loud, bright, slightly nasal mature female voice, very expressive, fast and talkative, laughs heartily.",
-      "refText": "아이고, 얘는! 밥은 먹고 다니니? 살이 쪽 빠졌네. 이리 와 봐, 반찬 좀 싸 줄게."
+      "instruct": "A Korean woman in her fifties, chatty neighborhood auntie. Loud, bright, slightly nasal mature female voice, very expressive, fast and talkative, laughs heartily. Speaking as if greeting someone for the first time."
     },
     "middle-f-02": {
-      "instruct": "A Korean woman in her late fifties, gentle and refined. Soft, calm, slightly low mature female voice, slow elegant pacing, warm and wise.",
-      "refText": "천천히 해도 괜찮아. 다 때가 있는 법이야. 차 한잔 마시면서 이야기해 보자."
+      "instruct": "A Korean woman around sixty, gentle and refined. Soft, calm, slightly low mature female voice with slight age texture, slow elegant pacing, warm and wise. Speaking as if greeting someone for the first time."
     },
     "middle-f-03": {
-      "instruct": "A Korean woman in her fifties who runs a small restaurant. Warm, hearty, slightly husky mature female voice, brisk and caring, speaks with friendly authority.",
-      "refText": "어서 와요! 오늘 김치찌개 아주 맛있게 됐어. 밥 더 필요하면 얼마든지 말해요!"
+      "instruct": "A Korean woman in her fifties who runs a small restaurant. Warm, hearty, slightly husky mature female voice, brisk and caring, speaks with friendly authority. Speaking as if greeting someone for the first time."
     },
     "middle-f-04": {
-      "instruct": "A Korean woman in her fifties, strict professional manager. Firm, clear, medium-low mature female voice, precise and authoritative, sharp but composed.",
-      "refText": "보고서는 내일 아침 아홉 시까지 제 책상에 올려 주세요. 변명은 안 받습니다."
+      "instruct": "A Korean woman in her fifties, strict professional manager. Firm, clear, medium-low mature female voice, precise and authoritative, sharp but composed. Speaking as if greeting someone for the first time."
     },
     "middle-m-01": {
-      "instruct": "A Korean man in his fifties, jolly dad who loves corny jokes. Deep, warm, slightly gravelly male voice, booming and cheerful, chuckles a lot.",
-      "refText": "허허, 이거 알아? 세상에서 제일 뜨거운 과일이 뭔지? 천도복숭아! 하하하!"
+      "instruct": "A Korean man in his fifties, jolly dad who loves corny jokes. Deep, warm, slightly gravelly male voice, booming and cheerful, chuckles a lot. Speaking as if greeting someone for the first time."
     },
     "middle-m-02": {
-      "instruct": "A Korean man in his late fifties, gentle scholarly professor. Calm, low, soft-spoken mature male voice, slow and thoughtful, warm and patient.",
-      "refText": "자, 그럼 오늘은 여기까지 하지. 궁금한 게 있으면 언제든 연구실로 찾아오게."
+      "instruct": "A Korean man around sixty, gentle scholarly grandfather type. Calm, low, soft-spoken mature male voice with slight age texture, slow and thoughtful, warm and patient. Speaking as if greeting someone for the first time."
     },
     "middle-m-03": {
-      "instruct": "A Korean man in his fifties, outdoorsy hiking enthusiast. Loud, rough, husky deep male voice, hearty and boisterous, speaks with big energy.",
-      "refText": "야, 정상 다 왔다! 조금만 더 힘내! 여기서 먹는 막걸리가 세상에서 제일 맛있어!"
+      "instruct": "A Korean man in his fifties, outdoorsy hiking enthusiast. Loud, rough, husky deep male voice, hearty and boisterous, speaks with big energy. Speaking as if greeting someone for the first time."
     },
     "middle-m-04": {
-      "instruct": "A Korean man in his fifties, serious company executive. Deep, steady, low male voice, measured and authoritative, formal tone with clear pronunciation.",
-      "refText": "이번 분기 실적은 나쁘지 않습니다. 하지만 지금이 가장 조심해야 할 때입니다."
+      "instruct": "A Korean man in his fifties, serious company executive. Deep, steady, low male voice, measured and authoritative, formal tone with clear pronunciation. Speaking as if greeting someone for the first time."
     }
   }
 }
