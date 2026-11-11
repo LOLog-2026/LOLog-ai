@@ -34,7 +34,7 @@ def speakable(text: str) -> str:
 _AGE = [  # appearance(영어 외모 글) → 나이대. 위에서부터 먼저 맞는 것
     # "a 20-year-old man"이 아이로 잡히지 않게 나이는 1~12살만
     ("kid", r"\b(child|kid|boy|girl|toddler|elementary|([1-9]|1[0-2])\s*-?\s*year-?\s*old)\b"),
-    ("middle", (r"\b(middle-?\s*aged|forties|fifties|sixties|elderly|old (man|woman)|grand(ma|pa|mother|father)|"
+    ("middle", (r"\b(middle-?\s*aged|forties|fifties|sixties|elderly|(?<!-)old (man|woman)|grand(ma|pa|mother|father)|"
                 r"gray hair|grey hair|mother|father|mom|dad|uncle|aunt)\b")),
 ]
 _FEMALE = r"\b(woman|girl|female|lady|she|her|mother|mom|aunt|grandma|grandmother)\b"
