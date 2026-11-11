@@ -75,15 +75,19 @@ def draw(a) -> None:
             d.text((40, 40), f"scene {s['index']}  {s['motion']} / {s['transition']}", fill="white")
             img.save(out / f"scene_{s['index']}.png")
         return
-    from lolog_ai.render import video_prompt
-    from lolog_ai.worker import draw as D
+    from PIL import Image as PILImage
 
+    from lolog_ai.worker import draw as D
+    refs = {}
+    if a.chars:  # 기본 화자 그림 폴더(LOLog-docs assets/default-characters)를 주면 ref가 있는 인물을 참조로 그린다
+        for c in sb["characters"]:
+            kind, _, rid = (c.get("ref") or "").partition(":")
+            if kind == "default" and (Path(a.chars) / f"{rid}.png").exists():
+                refs[c["key"]] = PILImage.open(Path(a.chars) / f"{rid}.png")
     t0 = time.perf_counter()
-    embeds = D.encode([video_prompt(sb, s) for s in sb["scenes"]])
-    pipe = D._image_pipe()
-    for i, s in enumerate(sb["scenes"]):
-        D._render(pipe, embeds[i], a.seed + i).save(out / f"scene_{s['index']}.png")
-    print(f"[draw] 장면 {len(sb['scenes'])}장 {time.perf_counter() - t0:.0f}초")
+    for s, img in zip(sb["scenes"], D.draw_scenes(sb, seed=a.seed, refs=refs)):
+        img.save(out / f"scene_{s['index']}.png")
+    print(f"[draw] 장면 {len(sb['scenes'])}장 {time.perf_counter() - t0:.0f}초, 참조 {len(refs)}명")
 
 
 def render(a) -> None:
@@ -113,6 +117,7 @@ def main() -> None:
     d.add_argument("out")
     d.add_argument("--placeholder", action="store_true")
     d.add_argument("--seed", type=int, default=33)
+    d.add_argument("--chars", default=None, help="기본 화자 그림 폴더(참조로 그림)")
     r = sub.add_parser("render")
     r.add_argument("out")
     a = ap.parse_args()

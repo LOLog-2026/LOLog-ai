@@ -134,6 +134,8 @@ def clean_scene(text: str) -> str:
     """그림 설명에서 따옴표로 묶은 말과 괄호(이름)를 뺀다. 넣으면 그림에 글자·말풍선이 생긴다(#33).
     LLM이 규칙을 자주 어겨서 다시 묻지 않고 코드가 지운다."""
     out = _QUOTED.sub("", text)
+    out = re.sub(r"(,\s*|\band\s+|\bwith\s+)?(a\s+)?(bright\s+|colorful\s+)?(neon\s+)?(signs?|signboards?|banners?|"
+                 r"posters?|menus? boards?)\b", "", out, flags=re.IGNORECASE)  # 간판·현수막은 글씨가 그려진다
     out = re.sub(r"\b(says|saying|said|asks|asking|shouts|whispers)\s*[,:]?(?=\s|[.]|$)", "speaks", out)
     return re.sub(r"\s+([,.])", r"\1", re.sub(r"\s{2,}", " ", out)).strip()
 
@@ -177,6 +179,67 @@ def _fix_flashback(scene: dict, sb: dict) -> None:
             scene["extras"].append({"id": e["id"], "position": free[0]})
 
 
+POSITIONS = ("left", "right", "center")
+_PERSON = re.compile(r"\b(man|woman|boy|girl|male|female|guy|lady|grandma|grandpa|grandmother|grandfather)\b")
+_COLOR = re.compile(r"\b(black|white|gray|grey|navy|blue|red|green|yellow|pink|purple|brown|beige|orange|"
+                    r"cream|khaki|mint|olive|maroon|denim|striped|plaid|checkered)\b")
+_TOP = re.compile(r"\b(hoodie|t-shirt|shirt|sweater|jacket|cardigan|blouse|dress|coat|sweatshirt|blazer|uniform)\b")
+TOP_COLORS = ["navy", "mustard yellow", "forest green", "coral", "lavender", "sky blue"]
+
+
+def fix_appearance(c: dict, i: int) -> str:
+    """외모 글을 모든 장면에서 같은 사람으로 그릴 수 있게 다듬는다(#33 12개 카드: 성별이 없거나 옷 색이 없는
+    인물은 장면마다 성별·옷이 바뀌었다). 성별 말이 없으면 앞에 붙이고, 윗옷에 색이 없으면 색을 붙인다."""
+    a = c.get("appearance", "").strip()
+    low = a.lower()
+    if not _PERSON.search(low) and c.get("gender") in ("f", "m"):
+        noun = {"kid": ("girl", "boy"), "middle": ("middle-aged woman", "middle-aged man")}.get(
+            c.get("age"), ("young woman", "young man"))[c["gender"] == "m"]
+        a = f"{noun}, {a}"
+    top = _TOP.search(a.lower())
+    seg = a.lower()[:top.start()].rsplit(",", 1)[-1] if top else ""  # 윗옷 바로 앞(머리 색은 빼고)
+    if top and not _COLOR.search(seg):
+        a = a[:top.start()] + TOP_COLORS[i % len(TOP_COLORS)] + " " + a[top.start():]
+    return a
+
+
+def split_line(d: dict, limit: int) -> list[dict]:
+    """자막 한도를 넘는 대사를 띄어쓰기에서 둘로 나눈다(같은 화자). 나눌 수 없으면 그대로."""
+    t = d["text"]
+    if len(t) <= limit or " " not in t:
+        return [d]
+    cuts = [i for i, ch in enumerate(t) if ch == " "]
+    i = min(cuts, key=lambda k: abs(k - len(t) / 2))
+    a, b = t[:i].strip(), t[i + 1:].strip()
+    if max(len(a), len(b)) > limit:
+        return [d]
+    return [{**d, "text": a}, {**d, "text": b}]
+
+
+def fix_scene(sc: dict, limit: int, max_lines: int) -> None:
+    """LLM이 자주 틀리는 것을 코드가 맞춘다(#33 12개 카드 중 3개가 이것들로 실패).
+    대사가 긴 것은 나누고, 지금 장면에서 말하는 화자가 cast에 없으면 넣고, 자리가 겹치면 다시 정한다."""
+    lines = []
+    for d in sc["lines"]:
+        lines += split_line(d, limit) if len(sc["lines"]) + len(lines) < max_lines + 1 else [d]
+    sc["lines"] = lines[:max(max_lines, len(sc["lines"]))]
+    if not sc["flashback"]:
+        keys = [c["key"] for c in sc["cast"]]
+        for d in sc["lines"]:
+            if d["speaker"] not in keys and len(sc["cast"]) + len(sc["extras"]) < 3:
+                sc["cast"].append({"key": d["speaker"], "position": "center"})
+                keys.append(d["speaker"])
+            elif d["speaker"] not in keys and sc["extras"]:
+                sc["extras"].pop()
+                sc["cast"].append({"key": d["speaker"], "position": "center"})
+                keys.append(d["speaker"])
+    people = sc["cast"] + sc["extras"]
+    if len({p["position"] for p in people}) != len(people):
+        order = POSITIONS if len(people) < 3 else ("left", "center", "right")
+        for p, pos in zip(people, order):
+            p["position"] = pos
+
+
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -204,9 +267,14 @@ def assemble(raw: dict, src: dict) -> dict:
         sb["scenes"].append({"index": i + 1, "flashback": flashback, "scene": clean_scene(p["scene"]),
                              "cast": cast, "extras": _extras(p, sb["extras"], cast), "lines": lines,
                              "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"]})
+    for i, c in enumerate(sb["characters"]):
+        if not c.get("ref"):  # 고른 그림의 외모 글은 그대로 둔다
+            c["appearance"] = fix_appearance(c, i)
     for sc in sb["scenes"]:
         if sc["flashback"]:
             _fix_flashback(sc, sb)
+        fix_scene(sc, MAX_TEXT, MAX_LINES)
+    sb["place"]["prompt"] = clean_scene(sb["place"]["prompt"])
     return sb
 
 
