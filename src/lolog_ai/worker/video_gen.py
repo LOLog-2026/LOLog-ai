@@ -11,7 +11,15 @@ import json
 import logging
 import re
 
-from ..video_storyboard import MAX_LINES, MAX_SCENES, MAX_TEXT, MIN_SCENES, MOTIONS, TRANSITIONS, validate
+from ..video_storyboard import (
+    MAX_LINES,
+    MAX_SCENES,
+    MAX_TEXT,
+    MIN_SCENES,
+    MOTIONS,
+    TRANSITIONS,
+    validate,
+)
 from .llm import Llm
 from .storyboard_gen import StoryboardInvalid, _character, card_text, fixed_looks
 

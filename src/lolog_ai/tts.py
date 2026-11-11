@@ -32,9 +32,10 @@ def speakable(text: str) -> str:
     return out if re.search(r"[가-힣A-Za-z0-9]", out) else ""
 
 _AGE = [  # appearance(영어 외모 글) → 나이대. 위에서부터 먼저 맞는 것
-    ("kid", r"\b(child|kid|boy|girl|toddler|elementary|\d\s*-?\s*year-?\s*old)\b"),
-    ("middle", r"\b(middle-?\s*aged|forties|fifties|sixties|elderly|old (man|woman)|grand(ma|pa|mother|father)|"
-               r"gray hair|grey hair|mother|father|mom|dad|uncle|aunt)\b"),
+    # "a 20-year-old man"이 아이로 잡히지 않게 나이는 1~12살만
+    ("kid", r"\b(child|kid|boy|girl|toddler|elementary|([1-9]|1[0-2])\s*-?\s*year-?\s*old)\b"),
+    ("middle", (r"\b(middle-?\s*aged|forties|fifties|sixties|elderly|old (man|woman)|grand(ma|pa|mother|father)|"
+                r"gray hair|grey hair|mother|father|mom|dad|uncle|aunt)\b")),
 ]
 _FEMALE = r"\b(woman|girl|female|lady|she|her|mother|mom|aunt|grandma|grandmother)\b"
 _MALE = r"\b(man|boy|male|guy|he|his|father|dad|uncle|grandpa|grandfather)\b"
@@ -70,7 +71,7 @@ def _local(model_id: str) -> str:
     try:
         from huggingface_hub import snapshot_download
         return snapshot_download(model_id, local_files_only=True)
-    except Exception:  # 아직 안 받았으면 이름 그대로(받으면서 읽는다)
+    except Exception:  # noqa: BLE001 - 아직 안 받았으면(어떤 오류든) 이름 그대로 넘겨 받으면서 읽게 한다
         return model_id
 
 

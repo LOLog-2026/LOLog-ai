@@ -11,9 +11,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import re
+from typing import Any
 
 from .storyboard import HANGUL_RE, INTERNAL_NAME_RE, KEY_RE
 
