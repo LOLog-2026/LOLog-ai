@@ -36,7 +36,7 @@ fi
 
 VENV=$LOLOG_HOME/tts-venv
 [ -x "$VENV/bin/python" ] || uv venv --python 3.12 "$VENV"
-uv pip install -p "$VENV" qwen-tts soundfile
+uv pip install -p "$VENV" qwen-tts soundfile pillow redis   # redis: 3호 워커(--role video)도 이 venv로 돈다
 
 mkdir -p "$LOLOG_HOME/voices" "$LOLOG_HOME/hf-cache"
 cp "$VOICES_SRC"/*.wav "$LOLOG_HOME/voices/"
@@ -49,3 +49,4 @@ HF_HUB_OFFLINE=1 "$VENV/bin/python" -I "$LOLOG_HOME/tts.py" "$LOLOG_HOME/voices"
   || { echo "읽기 확인에 실패했어요. 아래로 전체 출력을 보세요:"; echo "  HF_HOME=$HF_HOME $VENV/bin/python -I $LOLOG_HOME/tts.py $LOLOG_HOME/voices"; exit 1; }
 
 echo "준비 끝. 워커 환경 변수: HF_HOME=$HF_HOME HF_HUB_OFFLINE=1 TTS_MODEL=$MODEL TTS_VOICES_DIR=$LOLOG_HOME/voices"
+echo "워커: PYTHONPATH=<LOLog-ai>/src $VENV/bin/python -m lolog_ai.worker --role video  (WORKER_NAME=jetson-3, 나머지는 1·2호와 같은 worker.env)"

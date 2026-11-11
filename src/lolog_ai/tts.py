@@ -74,6 +74,32 @@ def _local(model_id: str) -> str:
         return model_id
 
 
+def pick_voice(char: dict, src_char: dict | None, available: set[str], seed: int) -> str:
+    """콘티 인물 하나의 목소리(기본 화자 id). spec/video.md 6장.
+
+    1. source의 character.voice: 프로필 캐릭터에서 사용자가 고른 목소리(기본 화자 id)
+    2. 기본 화자가 붙어 있으면(ref "default:young-f-02") 그 목소리
+    3. 콘티의 gender·age로 그 묶음의 4명 중 하나. 프로필 캐릭터인데 목소리를 안 골랐으면(voice null) 회원 ID로
+       골라서 그 사람은 어느 카드에서나 같은 목소리가 된다. 아니면 seed(카드 ID + 순번)로
+    4. 외모 글로 짐작(voice_for)
+    """
+    src_char = src_char or {}
+    if src_char.get("voice") in available:
+        return src_char["voice"]
+    ref = char.get("ref") or src_char.get("ref") or ""
+    kind, _, rid = ref.partition(":")
+    if kind == "default" and rid in available:
+        return rid
+    if kind == "profile" and rid.isdigit():
+        seed = int(rid)
+    if char.get("gender") in ("f", "m") and char.get("age") in ("kid", "young", "middle"):
+        for k in range(4):
+            vid = f"{char['age']}-{char['gender']}-{(seed + k) % 4 + 1:02d}"
+            if vid in available:
+                return vid
+    return voice_for(char.get("appearance", ""), seed=seed, available=available)
+
+
 class Tts:
     def __init__(self, voices_dir: str | Path, model: str = MODEL, device: str | None = None,
                  xvec_only: bool = False, gen_kwargs: dict | None = None):

@@ -179,3 +179,23 @@ def draw_avatar(photo, appearance: str, seed: int) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
+
+
+def draw_scenes(sb: dict, seed: int, refs: dict | None = None) -> list:
+    """영상 콘티(video_storyboard) → 장면 그림(PIL, 768) 목록. 말풍선 없이 그대로 쓴다(#33).
+    모델을 올리고 내리는 순서는 draw()와 같다."""
+    from ..render import ref_keys, video_prompt
+
+    refs = {k: _ref(v) for k, v in (refs or {}).items()}
+    t0 = time.perf_counter()
+    embeds = encode([video_prompt(sb, s, set(refs)) for s in sb["scenes"]])
+    pipe = None
+    try:
+        pipe = _image_pipe()
+        out = [_render(pipe, embeds[i], seed + i, [refs[k] for k in ref_keys(s, set(refs))])
+               for i, s in enumerate(sb["scenes"])]
+    finally:
+        embeds = pipe = None
+        _free()
+    log.info("영상 장면 %d장 %.0f초, 참조 %d명", len(out), time.perf_counter() - t0, len(refs))
+    return out

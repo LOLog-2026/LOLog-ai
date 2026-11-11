@@ -34,6 +34,7 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - appearance는 그 이야기에 어울리는 외모를 영어로 짧게 정한다(성별, 나이대, 머리, 옷 색). 모든 장면에 그대로 들어간다
 - appearance는 지금 말하고 있는 그 화자 본인의 외모다. 이야기에 나오는 다른 사람(할머니, 엄마 등)의 외모를 화자에게 쓰지 않는다. 화자의 나이대는 말투로 정하고 모르면 20대로 한다
 - role은 teller(이야기를 들려주는 사람) 또는 listener(듣고 반응하는 사람)
+- gender(f·m)와 age(kid 어린이, young 10~30대, middle 40대 이상)는 그 화자의 목소리를 고르는 데 쓴다. 말투와 내용으로 정하고, "외모 정해짐"이 있으면 그 외모에 맞춘다
 - 화자 목록에 "외모 정해짐"이 있는 화자는 그 외모를 그대로 appearance에 쓴다
 
 그림 설명(place.prompt, appearance, scene, expression)은 모두 영어
@@ -96,8 +97,10 @@ def _schema(keys: list[str]) -> dict:
             "place": {"type": "object", "properties": {"text": s, "prompt": en}, "required": ["text", "prompt"]},
             "characters": {"type": "array", "minItems": 1, "maxItems": len(keys), "items": {
                 "type": "object", "properties": {"key": key, "appearance": en,
-                                                 "role": {"type": "string", "enum": ["teller", "listener"]}},
-                "required": ["key", "role", "appearance"]}},
+                                                 "role": {"type": "string", "enum": ["teller", "listener"]},
+                                                 "gender": {"type": "string", "enum": ["f", "m"]},
+                                                 "age": {"type": "string", "enum": ["kid", "young", "middle"]}},
+                "required": ["key", "role", "gender", "age", "appearance"]}},
             "scenes": {"type": "array", "minItems": MIN_SCENES, "maxItems": MAX_SCENES, "items": scene},
         },
         "required": ["place", "characters", "scenes"],
@@ -124,7 +127,8 @@ def assemble(raw: dict, src: dict) -> dict:
     sb = {
         "version": 1, "videoId": src.get("videoId"), "cardId": src["cardId"],
         "place": place,
-        "characters": [{**_character(c, names, fixed), "role": c.get("role", "teller")} for c in raw["characters"]],
+        "characters": [{**_character(c, names, fixed), "role": c.get("role", "teller"),
+                        "gender": c.get("gender"), "age": c.get("age")} for c in raw["characters"]],
         "scenes": [],
     }
     listeners = {c["key"] for c in raw["characters"] if c.get("role") == "listener"}
