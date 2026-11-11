@@ -1,0 +1,565 @@
+{
+ "checker": "Claude (민주 확인 전)",
+ "date": "2026-11-12",
+ "source": "/workspace/video-demo/batch4 check_0~3.png",
+ "note": "s49는 LLM 서버 500 오류, s80은 콘티 검사 3번 실패로 영상 없음",
+ "videos": {
+  "s02": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "개 두 마리"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "개 두 마리"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "3명. 장면 글은 두 사람인데 cast는 한 명"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "2명. 장면 글의 '회색 옷 남자'가 cast에 없음"
+    }
+   ]
+  },
+  "s14": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '어린 소년'이 cast·extras에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s17": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": "바닥 쪽지에 큰 가짜 글씨(장면 글: text reads)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s31": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 콧수염 남자 둘"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "휴대폰 화면 가짜 글씨(text appears on screen)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "탁자 위 휴대폰 화면 글씨"
+    }
+   ]
+  },
+  "s46": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s48": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s52": {
+   "B4": false,
+   "B7": null,
+   "B4_note": "화자2 외모가 'casual clothes'라 윗옷이 장면마다 다름",
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s58": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s71": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s89": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '남자'가 cast에 없음(아이만)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 아이 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '남자'가 cast에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  }
+ }
+}

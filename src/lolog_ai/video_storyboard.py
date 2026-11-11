@@ -122,39 +122,45 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
     return errs
 
 
-_FEMALE = re.compile(r"\b(female|woman|women|girl|lady|grandma|grandmother|mother|mom|she|her)\b", re.IGNORECASE)
-_MALE = re.compile(r"\b(male|man|men|boy|guy|grandpa|grandfather|father|dad|he|his|him)\b", re.IGNORECASE)
+# 사람 종류: 성별 × 어른·아이. "the man"인데 그 장면에 아이만 있어도 없는 어른이 그려졌다(#33 4차 s89)
+_KINDS = {
+    "f": re.compile(r"\b(female|woman|women|lady|ladies|grandma|grandmother|mother|mom|aunt)\b", re.IGNORECASE),
+    "m": re.compile(r"\b(male|man|men|guy|grandpa|grandfather|father|dad|uncle)\b", re.IGNORECASE),
+    "fk": re.compile(r"\b(girl|girls|daughter)\b", re.IGNORECASE),
+    "mk": re.compile(r"\b(boy|boys|son)\b", re.IGNORECASE),
+}
+_KIND_WORD = {"f": "여자", "m": "남자", "fk": "여자아이", "mk": "남자아이"}
 
 
-def _gender_of(text: str) -> set[str]:
-    out = set()
-    if _FEMALE.search(text):
-        out.add("f")
-    if _MALE.search(text):
-        out.add("m")
-    return out
+def kinds_of(text: str) -> set[str]:
+    """글에 나오는 사람 종류. "a boy about eight"는 mk, "young male, 20s"는 m"""
+    return {k for k, pat in _KINDS.items() if pat.search(text)}
+
+
+def missing_kinds(scene: dict, chars: list[dict], extras: list[dict]) -> set[str]:
+    """장면 글이 부르는데 그 장면 cast·extras에 없는 사람 종류. 군중을 쓴 장면은 보지 않는다."""
+    text = scene.get("scene", "")
+    if CROWD_RE.search(text):
+        return set()
+    looks = {c.get("key"): c.get("appearance", "") for c in chars}
+    ex = {e.get("id"): e.get("appearance", "") for e in extras}
+    have = set()
+    for c in scene.get("cast") or []:
+        have |= kinds_of(looks.get(c.get("key"), ""))
+    for e in scene.get("extras") or []:
+        have |= kinds_of(ex.get(e.get("id"), "")) or set(_KINDS)  # 동물·종류 모르는 인물
+    return kinds_of(text) - have
 
 
 def _check_gender(where: str, s: dict, chars: list[dict], extras: list[dict]) -> list[str]:
     """장면 글이 그 장면 사람에 없는 성별을 부르면 그림에 없는 사람이 생겼다(#33 3차: 두 화자 모두 남자인데
     "the woman"이라 써서 여자가 그려짐 4장). 군중(crowd 등)을 쓴 장면은 보지 않는다."""
-    text = s.get("scene", "")
-    if CROWD_RE.search(text):
-        return []
-    looks = {c.get("key"): c.get("appearance", "") for c in chars}
-    ex = {e.get("id"): e.get("appearance", "") for e in extras}
-    have = set()
-    for c in s.get("cast") or []:
-        have |= _gender_of(looks.get(c.get("key"), ""))
-    for e in s.get("extras") or []:
-        have |= _gender_of(ex.get(e.get("id"), "")) or {"f", "m"}  # 동물·성별 모르는 인물
-    want = _gender_of(re.sub(r"\b(his|her|him|he|she)\b", "", text, flags=re.IGNORECASE))
-    missing = want - have
+    missing = missing_kinds(s, chars, extras)
     if not missing:
         return []
-    word = {"f": "여자", "m": "남자"}
-    return [f"{where}.scene이 {'·'.join(word[g] for g in sorted(missing))}를 부르는데 이 장면 cast·extras에 없음 "
-            "(화자는 appearance와 같은 성별로 부르고, 다른 사람은 extras에 넣는다)"]
+    who = "·".join(_KIND_WORD[k] for k in sorted(missing))
+    return [(f"{where}.scene이 {who}를 부르는데 이 장면 cast·extras에 없음 "
+             "(화자는 appearance와 같은 성별로 부르고, 다른 사람은 extras에 넣는다)")]
 
 
 CROWD_RE = re.compile(r"\b(crowd|students|people|group|coworkers|classmates|audience|passengers|customers|graduates)\b",

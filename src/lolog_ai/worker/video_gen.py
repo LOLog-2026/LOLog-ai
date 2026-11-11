@@ -146,8 +146,8 @@ def clean_scene(text: str) -> str:
     # 글자를 그리라는 말(쪽지·문자·번호판, #33 2차 B1 실패 8장)과 말하는 동사(말풍선을 부름)를 지운다
     out = re.sub(r"(,\s*|\s+)?(with\s+)?(something\s+|words\s+|text\s+)?written\b[^,.]*", "", out, flags=re.IGNORECASE)
     out = re.sub(r"(,\s*|\s+)?(that|which)\s+(reads|says)\b[^,.]*", "", out, flags=re.IGNORECASE)
-    out = re.sub(r"(,\s*|\s+)?the\s+(text|message|note|sign|numbers?|screen)\s+(reads|says|shows|is|are)\b[^.]*",
-                 "", out, flags=re.IGNORECASE)
+    out = re.sub(r"(,\s*|\s+)?(the\s+)?(text|message|note|sign|numbers?|screen|words?|letters?)\s+"
+                 r"(reads|says|shows|is|are|appears?|flashes)\b[^.]*", "", out, flags=re.IGNORECASE)
     out = re.sub(r"(,\s*|\s+)?(and\s+)?\b(says|saying|said|asks|asking|shouts|whispers|speaks|speaking)\b"
                  r"(\s+(something|softly|quietly|loudly|clearly|to\s+\w+(\s+\w+)?))*", "", out, flags=re.IGNORECASE)
     # 한 장면에 시간·장소가 둘이면 칸이 나뉘어 그려졌다(B2). 문장마다 "then" 앞만 남기고 장면이 바뀌는 문장은 뺀다
@@ -159,6 +159,8 @@ def clean_scene(text: str) -> str:
         t = re.split(r",?\s+(and\s+)?then\b", t, maxsplit=1, flags=re.IGNORECASE)[0].rstrip(" ,.") + "."
         kept.append(t)
     out = " ".join(kept) if kept else out
+    out = re.sub(r",?\s+(with|and|of|to|showing|as|while|when)\s*\.", ".", out, flags=re.IGNORECASE)  # 지우고 남은 끝말
+    out = re.sub(r"(^|\.\s+)(of|with|and)\s+[^.]*\.", r"\1", out, flags=re.IGNORECASE)
     return re.sub(r"\s+([,.])", r"\1", re.sub(r"\s{2,}", " ", out)).strip()
 
 
@@ -222,6 +224,9 @@ def fix_appearance(c: dict, i: int) -> str:
     seg = a.lower()[:top.start()].rsplit(",", 1)[-1] if top else ""  # 윗옷 바로 앞(머리 색은 빼고)
     if top and not _COLOR.search(seg):
         a = a[:top.start()] + TOP_COLORS[i % len(TOP_COLORS)] + " " + a[top.start():]
+    elif not top:  # "casual clothes"처럼 윗옷이 없으면 장면마다 옷이 바뀌었다(#33 4차 s52)
+        a = re.sub(r",?\s*(wearing\s+)?casual\s+(clothes|outfit)", "", a, flags=re.IGNORECASE).rstrip(" ,")
+        a += f", wearing a {TOP_COLORS[i % len(TOP_COLORS)]} sweatshirt"
     return a
 
 
@@ -262,6 +267,26 @@ def fix_scene(sc: dict, limit: int, max_lines: int) -> None:
             p["position"] = pos
 
 
+def drop_phantoms(scene: dict, sb: dict) -> None:
+    """장면 글에서 그 장면 cast·extras에 없는 사람(종류)을 부르는 문장을 뺀다.
+    그 사람이 그림에 생기는 것(B3)을 막고, 콘티를 다시 묻지 않아 완성률과 시간을 지킨다(#33 4차: 다시 묻게 했더니
+    완성률 100% → 83%)."""
+    from ..video_storyboard import _KINDS, missing_kinds
+
+    missing = missing_kinds(scene, sb["characters"], sb.get("extras") or [])
+    if not missing:
+        return
+    sentences = [t for t in re.split(r"(?<=[.!?])\s+", scene["scene"]) if t.strip()]
+    kept = [t for t in sentences if not any(_KINDS[k].search(t) for k in missing)]
+    if kept:
+        scene["scene"] = " ".join(kept)
+    else:  # 모든 문장이 부르면 그 말만 "person"으로 바꾼다
+        out = scene["scene"]
+        for k in missing:
+            out = _KINDS[k].sub("person", out)
+        scene["scene"] = out
+
+
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -297,6 +322,7 @@ def assemble(raw: dict, src: dict) -> dict:
         # 화자를 빼는 것은 회상 장면에서만
         _fix_flashback(sc, sb, drop_cast=sc["flashback"])
         fix_scene(sc, MAX_TEXT, MAX_LINES)
+        drop_phantoms(sc, sb)
     sb["place"]["prompt"] = clean_scene(sb["place"]["prompt"])
     return sb
 
