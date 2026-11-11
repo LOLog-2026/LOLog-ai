@@ -129,7 +129,11 @@ _KINDS = {
     "fk": re.compile(r"\b(girl|girls|daughter)\b", re.IGNORECASE),
     "mk": re.compile(r"\b(boy|boys|son)\b", re.IGNORECASE),
 }
-_KIND_WORD = {"f": "여자", "m": "남자", "fk": "여자아이", "mk": "남자아이"}
+# 성별 없이 역할로 부르는 사람(동료, 손님 등). 그 장면에 이야기 속 인물(extras)이 없으면 없는 사람이 그려졌다
+# (#33 5차 s58 "colleague"). "student", "friend", "listener"는 화자를 부를 때도 써서 넣지 않는다
+_ROLE = re.compile(r"\b(colleague|coworker|co-worker|stranger|someone|worker|clerk|cashier|staff|customer|passenger|"
+                   r"neighbou?r|waiter|waitress|officer|guard|driver|teacher|doctor|nurse|manager)s?\b", re.IGNORECASE)
+_KIND_WORD = {"f": "여자", "m": "남자", "fk": "여자아이", "mk": "남자아이", "p": "역할로 부른 사람"}
 
 
 def kinds_of(text: str) -> set[str]:
@@ -148,8 +152,17 @@ def missing_kinds(scene: dict, chars: list[dict], extras: list[dict]) -> set[str
     for c in scene.get("cast") or []:
         have |= kinds_of(looks.get(c.get("key"), ""))
     for e in scene.get("extras") or []:
-        have |= kinds_of(ex.get(e.get("id"), "")) or set(_KINDS)  # 동물·종류 모르는 인물
-    return kinds_of(text) - have
+        # 동물·물건(종류 말이 없음)은 사람 종류를 채우지 않는다. 예전에는 "모든 종류가 있음"으로 봐서 개·닭이
+        # 있는 장면은 검사를 건너뛰었다(#33 5차 s14)
+        have |= kinds_of(ex.get(e.get("id"), ""))
+    want = kinds_of(text)
+    person_extras = [e for e in scene.get("extras") or [] if kinds_of(ex.get(e.get("id"), "")) or
+                     _ROLE.search(ex.get(e.get("id"), "") + " " + str(e.get("id", "")).replace("_", " "))]
+    if _ROLE.search(text):
+        want.add("p")
+        if person_extras:
+            have.add("p")
+    return want - have
 
 
 def _check_gender(where: str, s: dict, chars: list[dict], extras: list[dict]) -> list[str]:

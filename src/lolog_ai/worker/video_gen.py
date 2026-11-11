@@ -148,6 +148,9 @@ def clean_scene(text: str) -> str:
     out = re.sub(r"(,\s*|\s+)?(that|which)\s+(reads|says)\b[^,.]*", "", out, flags=re.IGNORECASE)
     out = re.sub(r"(,\s*|\s+)?(the\s+)?(text|message|note|sign|numbers?|screen|words?|letters?)\s+"
                  r"(reads|says|shows|is|are|appears?|flashes)\b[^.]*", "", out, flags=re.IGNORECASE)
+    # 무엇이든 "reads"·"labeled"면 글자를 그린다(#33 5차 "The building reads.")
+    out = re.sub(r"(,\s*|\s+)?\b(that\s+|which\s+)?(reads|labell?ed|titled|inscribed)\b[^,.]*", "", out,
+                 flags=re.IGNORECASE)
     out = re.sub(r"(,\s*|\s+)?(and\s+)?\b(says|saying|said|asks|asking|shouts|whispers|speaks|speaking)\b"
                  r"(\s+(something|softly|quietly|loudly|clearly|to\s+\w+(\s+\w+)?))*", "", out, flags=re.IGNORECASE)
     # 한 장면에 시간·장소가 둘이면 칸이 나뉘어 그려졌다(B2). 문장마다 "then" 앞만 남기고 장면이 바뀌는 문장은 뺀다
@@ -271,19 +274,21 @@ def drop_phantoms(scene: dict, sb: dict) -> None:
     """장면 글에서 그 장면 cast·extras에 없는 사람(종류)을 부르는 문장을 뺀다.
     그 사람이 그림에 생기는 것(B3)을 막고, 콘티를 다시 묻지 않아 완성률과 시간을 지킨다(#33 4차: 다시 묻게 했더니
     완성률 100% → 83%)."""
-    from ..video_storyboard import _KINDS, missing_kinds
+    from ..video_storyboard import _KINDS, _ROLE, missing_kinds
+
+    pats = {**_KINDS, "p": _ROLE}
 
     missing = missing_kinds(scene, sb["characters"], sb.get("extras") or [])
     if not missing:
         return
     sentences = [t for t in re.split(r"(?<=[.!?])\s+", scene["scene"]) if t.strip()]
-    kept = [t for t in sentences if not any(_KINDS[k].search(t) for k in missing)]
+    kept = [t for t in sentences if not any(pats[k].search(t) for k in missing)]
     if kept:
         scene["scene"] = " ".join(kept)
     else:  # 모든 문장이 부르면 그 말만 "person"으로 바꾼다
         out = scene["scene"]
         for k in missing:
-            out = _KINDS[k].sub("person", out)
+            out = pats[k].sub("person", out)
         scene["scene"] = out
 
 

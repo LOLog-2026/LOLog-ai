@@ -70,23 +70,32 @@ NO_SIGN_TEXT = ("One single full-frame illustration, not divided into panels, no
 
 def video_prompt(sb: dict, scene: dict, with_ref: set[str] | frozenset[str] = frozenset()) -> str:
     """영상 장면 하나(video_storyboard). 화자(cast)에 더해 화자가 아닌 이야기 속 인물(extras)도 넣는다."""
-    parts = []
+    from .video_storyboard import kinds_of
+
+    people, things = [], []
     if scene.get("cast"):
-        parts.append(cast_text(sb, scene, with_ref).removeprefix("Characters "))
+        people.append(cast_text(sb, scene, with_ref).removeprefix("Characters "))
     look = {e["id"]: positive(e["appearance"]) for e in sb.get("extras") or []}
+    n = len(scene.get("cast") or [])  # 예전에는 cast 전체를 한 덩이로 세어 둘이어도 "one person"이 됐다(#33 5차)
     for e in scene.get("extras") or []:
         expr = f", {e['expression']}" if e.get("expression") else ""
-        parts.append(f"{WHERE[e['position']]}: {look[e['id']]}{expr}")
+        text = f"{WHERE[e['position']]}: {look[e['id']]}{expr}"
+        if kinds_of(look[e["id"]]):
+            people.append(text)
+            n += 1
+        else:  # 동물·물건은 사람 수에 넣지 않는다. 넣으면 개가 두 마리 그려졌다(#33 5차 s02)
+            things.append(text)
     # 사람 수와 사람을 장면 글보다 먼저 쓴다. 장면 글의 "the man"과 인물 설명을 따로 읽어 같은 사람을 둘로
     # 그리는 일이 많았다(#33 3차 B3 같은 사람 둘 10장)
-    n = len(parts)
     crowd = bool(_CROWD.search(scene["scene"]))
-    if not parts:
+    if not n:
         who = "No people in this picture."
     else:
-        count = "one person" if n == 1 else f"{['two', 'three'][n - 2]} people"
+        count = "one person" if n == 1 else f"{['two', 'three', 'four'][min(n, 5) - 2]} people"
         lead = "The picture shows" if crowd else "The picture shows exactly"
-        who = f"{lead} {count}, each appears only once: {'; '.join(parts)}."
+        who = f"{lead} {count}, each appears only once: {'; '.join(people)}."
+    if things:
+        who += f" Also, each only once: {'; '.join(things)}."
     keep = f" {KEEP_REF}" if ref_keys(scene, with_ref) else ""
     return (f"{VIDEO_STYLE}. Setting: {sb['place']['prompt']}. {who} Scene: {scene['scene']}{keep} "
             f"{NO_SIGN_TEXT} {NO_TEXT}")
