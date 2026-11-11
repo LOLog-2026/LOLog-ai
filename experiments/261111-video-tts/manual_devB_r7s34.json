@@ -1,0 +1,625 @@
+{
+ "checker": "Claude 자동 회차",
+ "date": "2026-11-11",
+ "source": "/workspace/video-demo/devB-r7s34 check_0~3.png (7차 코드 c91f899 + 문서 25f24e2, 개발용 카드 B, 시드 34)",
+ "videos": {
+  "L06": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "뒤에 초록 후드 남자가 한 명 더(콘티 1명)"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "상자 속 티셔츠에 큰 가짜 한글 글씨"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "뒤에서 사진 찍는 사람 둘(콘티에 없음, 크게 그려짐)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L09": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L11": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "막대의 숫자 87이 읽힘(이야기에 필요)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": "숫자 8·78이 크게 읽힘(이야기에 필요)"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "케이크 숫자 78(이야기에 필요)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L23": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "가게 간판에 가짜 한글 글씨가 읽힐 만큼 큼"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L32": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s13": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "주황 고양이가 두 마리(방석, 소파 팔걸이)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "주황 고양이 옆에 갈색 동물이 하나 더"
+    }
+   ]
+  },
+  "s54": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "운전석에 모르는 여자가 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s59": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "'VIDEO KIOSK 1995' 간판이 읽힘(extras에 간판이 들어감)"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "'VIDEO KIOSK 1995' 간판; 장면 글의 '작은 아이'가 콘티에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s76": {
+   "B4": false,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '회색 스웨터 남자'(아무 인물 옷도 아님)가 오른쪽에 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "'회색 스웨터 남자'가 화자2 옆에 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "'회색 스웨터 남자'가 뒤에 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ],
+   "note": "화자1 윗옷이 1·3장면 흰 티, 5장면 파랑·흰 티(장면 글 'blue t-shirt')"
+  },
+  "s82": {
+   "B4": false,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '후드 남자'(화자1)가 cast에 없어 한 명 더(cast+extras 2명, 그림 3명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '회색 양복 남자'(extra_cop)가 extras에 없음(콘티 1명, 그림 2명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ],
+   "note": "화자1 후드가 1장면 연보라 회색, 3장면 짙은 회색(외모 글 'blue jeans and a hoodie'에 후드 색이 없음)"
+  },
+  "s83": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "extras mom의 외모 글이 화자2와 똑같아 같은 여자가 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 여자 둘(mom = 화자2 외모)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 여자 둘(mom = 화자2 외모)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 여자 둘(mom = 화자2 외모)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s84": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  }
+ }
+}

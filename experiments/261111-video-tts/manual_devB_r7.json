@@ -1,0 +1,643 @@
+{
+ "checker": "Claude 자동 회차",
+ "date": "2026-11-11",
+ "source": "/workspace/video-demo/devB-r7 check_0~3.png (7차 코드 c91f899, 개발용 카드 B, 시드 33)",
+ "videos": {
+  "L06": {
+   "B4": false,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": false,
+     "B6": null,
+     "note": "화면 속 시안이 안 보임(모니터 뒷면만)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "회색 후드·검은 티에 큰 가짜 한글 글씨"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ],
+   "note": "검은 티 화자3 머리가 장면마다 회갈색·갈색·검정, 5장면은 긴 밝은 머리라 여자처럼 보임"
+  },
+  "L09": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "빨간 모자 드러머가 앞에 서 있고 드럼 앞에도 한 번 더"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "노란 후드에 'BAND' 글씨가 읽힘; 드러머가 앞과 드럼 뒤에 두 번"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L11": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '빨간 재킷 사람'(화자3)이 cast에 없어 한 명 더 그려짐(cast 1명, 그림 2명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L23": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "아래쪽 판에 큰 가짜 한글 글씨"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "가게 사람(흰 앞치마)이 앞과 계산대 뒤에 두 번"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L32": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '빨간 목도리 노인'(elderly_man)이 extras에 없음(cast 1명, 그림 2명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "회색 후드 남자가 앞과 문 앞에 두 번"
+    }
+   ]
+  },
+  "s13": {
+   "B4": false,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "장면에 없는 고양이가 방석에서 잠(같은 고양이 한 마리라 통과)"
+    }
+   ],
+   "note": "화자1 머리가 1·2장면 갈색, 3·5장면 회색, 4장면 짙은 회색으로 바뀜"
+  },
+  "s54": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ],
+   "note": "1~3장면 장면 글의 '빨간 후드 남자'(화자1)가 cast에 없어 택시 기사가 빨간 옷으로 그려짐(사람 수는 맞음)"
+  },
+  "s59": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "'VIDEO KING' 간판이 읽힘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "'VIDEO KING' 간판; extras에 가게(old_video_store)가 들어가 n=2, 가게 안에 모르는 남자가 그려짐"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "'VIDEO KING' 간판"
+    }
+   ]
+  },
+  "s76": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '청바지 남자'(화자1)가 cast에 없어 흰 옷 남자가 한 명 더(cast+extras 2명, 그림 3명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s82": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s83": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "extras mom의 외모 글이 화자2와 똑같아 같은 여자가 둘로 그려짐"
+    }
+   ]
+  },
+  "s84": {
+   "B4": false,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '보라 카디건 여자'(화자1)가 cast에 없어 한 명 더(cast+extras 2명, 그림 3명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ],
+   "note": "화자2가 2장면에서만 보라 카디건(장면 글의 '보라 카디건 여자'는 화자1)"
+  }
+ }
+}

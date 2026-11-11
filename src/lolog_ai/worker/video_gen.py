@@ -214,9 +214,13 @@ def _fix_flashback(scene: dict, sb: dict, drop_cast: bool = True) -> None:
 POSITIONS = ("left", "right", "center")
 _PERSON = re.compile(r"\b(man|woman|boy|girl|male|female|guy|lady|grandma|grandpa|grandmother|grandfather)\b")
 _COLOR = re.compile(r"\b(black|white|gray|grey|navy|blue|red|green|yellow|pink|purple|brown|beige|orange|"
-                    r"cream|khaki|mint|olive|maroon|denim|striped|plaid|checkered)\b")
+                    r"cream|khaki|mint|olive|maroon|denim|striped|plaid|checkered|floral)\b")
 _TOP = re.compile(r"\b(hoodie|t-shirt|shirt|sweater|jacket|cardigan|blouse|dress|coat|sweatshirt|blazer|uniform)\b")
 TOP_COLORS = ["navy", "mustard yellow", "forest green", "coral", "lavender", "sky blue"]
+# 장면 글이 사람을 옷으로 부르는 말("the woman in a purple cardigan"). 1번 묶음은 색, 2번은 옷
+_DRESSED = re.compile(r"\b(?:man|woman|boy|girl|person|guy|lady)\s+(?:in|wearing|with)\s+(?:an?\s+|the\s+|his\s+|her\s+)?"
+                      rf"(?:{_COLOR.pattern}\s+)?\b(hoodie|t-shirt|shirt|sweater|jacket|cardigan|blouse|dress|coat|"
+                      r"sweatshirt|blazer|uniform|jeans|pants|skirt|apron|scarf|cap|hat|suit|vest|overalls)\b")
 
 
 def fix_appearance(c: dict, i: int) -> str:
@@ -229,7 +233,9 @@ def fix_appearance(c: dict, i: int) -> str:
             c.get("age"), ("young woman", "young man"))[c["gender"] == "m"]
         a = f"{noun}, {a}"
     top = _TOP.search(a.lower())
-    seg = a.lower()[:top.start()].rsplit(",", 1)[-1] if top else ""  # 윗옷 바로 앞(머리 색은 빼고)
+    # 윗옷 바로 앞(머리 색과 "blue jeans and a hoodie"의 바지 색은 빼고). 바지 색을 윗옷 색으로 보면 장면마다
+    # 후드 색이 바뀌었다(#33 6차 s59, 7차 s82)
+    seg = re.split(r",|\band\b|\bwith\b|\bover\b", a.lower()[:top.start()])[-1] if top else ""
     if top and not _COLOR.search(seg):
         a = a[:top.start()] + TOP_COLORS[i % len(TOP_COLORS)] + " " + a[top.start():]
     elif not top:  # "casual clothes"처럼 윗옷이 없으면 장면마다 옷이 바뀌었다(#33 4차 s52)
@@ -297,6 +303,30 @@ def drop_phantoms(scene: dict, sb: dict) -> None:
         scene["scene"] = out
 
 
+def add_dressed(scene: dict, sb: dict) -> None:
+    """장면 글이 그 장면에 없는 인물을 그 인물만 입은 옷으로 부르면("the woman in a purple cardigan") 그 인물을
+    넣는다. 넣지 않으면 FLUX가 그 옷을 입은 사람을 하나 더 그리거나 있는 화자에게 그 옷을 입혔다(#33 7차 B3·B4,
+    L11·L32·s76·s82·s84). 같은 옷을 입은 인물이 둘 이상이거나 이미 장면에 있으면 두고, 회상에는 듣는 사람을 넣지 않는다."""
+    text = scene["scene"].lower()
+    people = [(c["key"], c["appearance"].lower(), "cast", c.get("role")) for c in sb["characters"]]
+    people += [(e["id"], e["appearance"].lower(), "extras", None) for e in sb.get("extras") or []]
+    present = {c["key"] for c in scene["cast"]} | {x["id"] for x in scene["extras"]}
+    for m in _DRESSED.finditer(text):
+        phrase = f"{m.group(1)} {m.group(2)}" if m.group(1) else m.group(2)
+        owners = [p for p in people if re.search(rf"\b{re.escape(phrase)}\b", p[1])]
+        if len(owners) != 1 or owners[0][0] in present:
+            continue
+        key, _, kind, role = owners[0]
+        if scene["flashback"] and role == "listener":
+            continue
+        taken = {c["position"] for c in scene["cast"]} | {x["position"] for x in scene["extras"]}
+        free = [p for p in ("center", "left", "right") if p not in taken]
+        if not free or len(scene["cast"]) + len(scene["extras"]) >= 3:
+            return
+        scene[kind].append({"key" if kind == "cast" else "id": key, "position": free[0]})
+        present.add(key)
+
+
 def est_seconds(sb: dict) -> float:
     """대사 글자 수(공백 빼고)와 대사 수로 어림한 영상 길이(초). #33 개발용 영상 76개에 맞춘 직선."""
     lines = [d for s in sb["scenes"] for d in s["lines"]]
@@ -358,6 +388,7 @@ def assemble(raw: dict, src: dict) -> dict:
         # 화자를 빼는 것은 회상 장면에서만
         _fix_flashback(sc, sb, drop_cast=sc["flashback"])
         fix_scene(sc, MAX_TEXT, MAX_LINES)
+        add_dressed(sc, sb)
         drop_phantoms(sc, sb)
     trim_lines(sb)
     sb["place"]["prompt"] = clean_scene(sb["place"]["prompt"])
