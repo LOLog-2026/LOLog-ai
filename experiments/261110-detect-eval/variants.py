@@ -84,6 +84,9 @@ VERIFY_SCORE = {"system": VERIFY_SYSTEM, "reason": False}
 VARIANTS.update({
     "kc8+verify": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
                    "verify": VERIFY_REASON},
+    # 점수 토큰의 확률로 기대 점수를 받아 4점 안에서 더 잘게 거른다(출력 토큰은 그대로)
+    "kc8+verify-lp": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
+                      "verify": {**VERIFY_SCORE, "logprobs": True}},
     "kc8+verify-s": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
                      "verify": VERIFY_SCORE},
 })

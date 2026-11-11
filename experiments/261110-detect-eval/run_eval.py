@@ -25,6 +25,7 @@ import argparse
 import itertools
 import json
 import logging
+import math
 import os
 import random
 import statistics
@@ -93,17 +94,49 @@ class RecLlm(Llm):
         kept = []
         for s in stories:
             sub = "\n".join(lines[s["from"]:s["to"] + 1])
+            escore = None
             try:
-                r, st = super().chat_json(self.verify["system"], sub, schema, "verify",
-                                          temperature=self.temperature, max_tokens=1024)
+                if self.verify.get("logprobs"):
+                    r, st, escore = self._verify_logprobs(sub, schema)
+                else:
+                    r, st = super().chat_json(self.verify["system"], sub, schema, "verify",
+                                              temperature=self.temperature, max_tokens=1024)
                 score = r.get("score")
-            except LlmError as e:
+            except (LlmError, KeyError, ValueError) as e:
                 r, st, score = {"error": str(e)}, {}, None
             self.calls.append({"name": "verify", "user": sub, "result": r, "stat": st,
-                               "span": [s["from"], s["to"]], "score": score})
+                               "span": [s["from"], s["to"]], "score": score, "escore": escore})
             if score is None or score >= self.verify.get("min_score", 1):
                 kept.append(s)
         return {"stories": kept}
+
+    def _verify_logprobs(self, sub, schema):
+        """점수 토큰의 확률(top_logprobs)로 기대 점수(1~5 사이 실수)를 낸다. 출력 토큰은 늘지 않는다."""
+        body = {"model": self.model, "temperature": self.temperature, "max_tokens": 1024,
+                "logprobs": True, "top_logprobs": 10,
+                "messages": [{"role": "system", "content": self.verify["system"]}, {"role": "user", "content": sub}],
+                "response_format": {"type": "json_schema", "json_schema": {"name": "verify", "schema": schema}}}
+        t0 = time.perf_counter()
+        resp = self._post("/chat/completions", body)
+        ch = resp["choices"][0]
+        st = {"wall_s": round(time.perf_counter() - t0, 1), "prompt_tokens": resp.get("usage", {}).get("prompt_tokens"),
+              "completion_tokens": resp.get("usage", {}).get("completion_tokens"), "finish_reason": ch.get("finish_reason")}
+        r = json.loads(ch["message"]["content"])
+        toks = ch["logprobs"]["content"]
+        escore, seen = None, False
+        for t in toks:  # "score" 키 뒤에 처음 나오는 숫자 토큰
+            if t["token"].strip() == "score":
+                seen = True
+            elif seen and t["token"].strip() in ("1", "2", "3", "4", "5"):
+                ps = {}
+                for x in t.get("top_logprobs", []):
+                    k = x["token"].strip()
+                    if k in ("1", "2", "3", "4", "5"):
+                        ps[k] = ps.get(k, 0.0) + math.exp(x["logprob"])
+                if ps:
+                    escore = round(sum(int(k) * v for k, v in ps.items()) / sum(ps.values()), 3)
+                break
+        return r, st, escore
 
     def _detect_chunked(self, system, user, schema, max_tokens):
         """긴 입력 나누기 실험: 시간 창(min분, overlap분 겹침)마다 따로 찾고 합친다.
@@ -309,9 +342,13 @@ def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter, limit: int | None
                  dur_s=(sents[-1]["endMs"] - sents[0]["startMs"]) / 1000 if sents else 0,
                  prompt_tok=sum(c["stat"].get("prompt_tokens") or 0 for c in llm.calls),
                  raw_detect=[c["result"] for c in llm.calls if c["name"] == "detect"],
-                 verify=[{"span": c["span"], "score": c["score"], "reason": c["result"].get("reason") or c["result"].get("error"),
+                 verify=[{"span": c["span"], "score": c["score"], "escore": c.get("escore"), "reason": c["result"].get("reason") or c["result"].get("error"),
                           "wall_s": c["stat"].get("wall_s"), "out_tok": c["stat"].get("completion_tokens")}
-                         for c in llm.calls if c["name"] == "verify"])
+                         for c in llm.calls if c["name"] == "verify"],
+                 # 호출별 토큰·시간. 젯슨은 출력 속도(약 11토큰/초)가 병목이라 어디서 출력을 쓰는지 본다
+                 call_stats=[{"name": c["name"], "in": c["stat"].get("prompt_tokens"),
+                              "out": c["stat"].get("completion_tokens"), "wall_s": c["stat"].get("wall_s")}
+                             for c in llm.calls if not c.get("skipped")])
         recs.append(r)
         print(f"  {set_dir.name}/{f.stem}: 카드 {r['n_pred']} 정답 {r['n_gold']} 맞음 {r['n_match']} "
               f"오탐 {len(r['fp'])} {wall:.0f}s{' 실패: ' + err if err else ''}", flush=True)
