@@ -103,3 +103,19 @@ def apply(det_module, v: dict) -> None:
         det_module.DETECT_SYSTEM = det_module.DETECT_SYSTEM + "\n" + v["detect_append"]
     if "speaker_system" in v:
         det_module.SPEAKER_SYSTEM = v["speaker_system"]
+
+# ---- 화자 나누기 출력 줄이기(run_eval.RecLlm._speakers_compact) ----
+# 젯슨은 출력 약 11토큰/초라 카드마다 대사를 다시 쓰는 화자 나누기(카드당 약 500토큰)가 시간의 75~80%를 쓴다.
+# 줄 번호와 화자만 받고 대사는 입력 글을 그대로 쓴다(오타 고치기는 지금도 거의 안 되고 있음)
+SPEAKER_COMPACT = """다음은 대화 녹음을 글로 바꾼 기록 중 한 이야기 부분이다. 문맥으로 줄마다 누가 말했는지 나눈다.
+
+- 줄 번호마다 말한 사람을 적는다. 대사는 다시 쓰지 않는다
+- 한 줄에 여러 사람의 말이 섞여 있으면 말한 순서대로 그 줄 번호를 여러 번 적는다
+- 화자는 등장 순서대로 화자1, 화자2…로 붙이고 최대 4명이다. 같은 사람은 끝까지 같은 이름을 쓴다
+- 한두 글자뿐인 잡음 줄은 뺀다"""
+
+VARIANTS.update({
+    "spk-notext": {"speaker": {"system": SPEAKER_COMPACT, "mode": "notext"}},
+    "spk-pairs": {"speaker": {"system": SPEAKER_COMPACT + "\n\n출력은 [[줄 번호, 화자 번호], ...] 모양의 JSON 배열 하나다. 예: [[12,1],[13,2],[14,1]]",
+                              "mode": "pairs"}},
+})

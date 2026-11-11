@@ -22,6 +22,8 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import copy
 import itertools
 import json
 import logging
@@ -30,6 +32,7 @@ import os
 import random
 import statistics
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -49,11 +52,15 @@ LATE_S = 3.0
 
 class RecLlm(Llm):
     def __init__(self, *a, temperature: float = 0.2, skip_speakers: bool = False,
-                 chunk: dict | None = None, verify: dict | None = None, **kw):
+                 chunk: dict | None = None, verify: dict | None = None, speaker: dict | None = None,
+                 gold_detect: bool = False, **kw):
         super().__init__(*a, **kw)
         self.temperature = temperature
         self.skip_speakers = skip_speakers
         self.chunk = chunk          # {"min": 창 길이(분), "overlap": 겹침(분)}. 있으면 이야기 찾기를 시간 창으로 나눠 부른다
+        self.speaker = speaker      # {"system", "mode": "notext"|"pairs"}. 있으면 화자 나누기가 대사를 다시 쓰지 않는다
+        self.gold_detect = gold_detect  # 이야기 찾기는 정답을 그대로 돌려줌(화자 나누기만 따로 잴 때)
+        self.gold = None
         self.verify = verify        # {"system", "reason": bool, "min_score"}. 있으면 후보마다 1~5점을 매겨 거른다
         self.cur_sents: list[dict] = []  # run_set이 녹음마다 채움(detect()와 같은 startMs 정렬)
         self.calls: list[dict] = []
@@ -72,6 +79,12 @@ class RecLlm(Llm):
             stat = {"wall_s": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "finish_reason": "stop"}
             self.calls.append({"name": name, "user": user, "result": res, "stat": stat, "skipped": True})
             return res, stat
+        if name == "detect" and self.gold_detect:
+            res = {"stories": [{"kind": g["kind"], "summary": g["id"], "from": g["from"], "to": g["to"],
+                                "finished": True} for g in self.gold["stories"]]}
+            return res, {"wall_s": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "finish_reason": "stop"}
+        if name == "speakers" and self.speaker:
+            return self._speakers_compact(user, max_tokens)
         if name == "detect" and self.chunk:
             res, stat = self._detect_chunked(system, user, schema, max_tokens)
         else:
@@ -109,6 +122,38 @@ class RecLlm(Llm):
             if score is None or score >= self.verify.get("min_score", 1):
                 kept.append(s)
         return {"stories": kept}
+
+    PAIRS_GRAMMAR = 'root ::= "[" pair ("," pair)* "]"\npair ::= "[" [0-9]+ "," [1-4] "]"\n'
+
+    def _speakers_compact(self, user, max_tokens):
+        """화자 나누기 출력 줄이기 실험: 줄 번호와 화자만 받고 대사는 입력 글을 그대로 쓴다.
+        notext = 지금 스키마에서 text만 뺌. pairs = [[줄 번호, 화자 번호], ...]를 문법으로 공백 없이 강제."""
+        text_of = {int(l.split("]")[0][1:]): l.split("] ", 1)[1] if "] " in l else "" for l in user.split("\n")}
+        mode = self.speaker["mode"]
+        body = {"model": self.model, "temperature": self.temperature, "max_tokens": max_tokens,
+                "messages": [{"role": "system", "content": self.speaker["system"]}, {"role": "user", "content": user}]}
+        if mode == "pairs":
+            body["grammar"] = self.PAIRS_GRAMMAR
+        else:
+            body["response_format"] = {"type": "json_schema", "json_schema": {"name": "speakers", "schema": {
+                "type": "object", "required": ["lines"], "properties": {"lines": {"type": "array", "minItems": 1, "items": {
+                    "type": "object", "required": ["seg", "speaker"],
+                    "properties": {"seg": {"type": "integer"}, "speaker": {"type": "string", "enum": det.SPEAKERS}}}}}}}}
+        t0 = time.perf_counter()
+        resp = self._post("/chat/completions", body)
+        ch = resp["choices"][0]
+        stat = {"wall_s": round(time.perf_counter() - t0, 1), "prompt_tokens": resp.get("usage", {}).get("prompt_tokens"),
+                "completion_tokens": resp.get("usage", {}).get("completion_tokens"), "finish_reason": ch.get("finish_reason")}
+        if ch.get("finish_reason") == "length":
+            raise LlmError(f"출력이 max_tokens({max_tokens})에서 잘림")
+        try:
+            raw = json.loads(ch["message"]["content"])
+        except json.JSONDecodeError as e:
+            raise LlmError(f"JSON 파싱 실패: {e}") from None
+        pairs = [(a, f"화자{b}") for a, b in raw] if mode == "pairs" else [(l["seg"], l["speaker"]) for l in raw.get("lines", [])]
+        res = {"lines": [{"seg": a, "speaker": sp, "text": text_of[a]} for a, sp in pairs if text_of.get(a)]}
+        self.calls.append({"name": "speakers", "user": user, "result": res, "stat": stat})
+        return res, stat
 
     def _verify_logprobs(self, sub, schema):
         """점수 토큰의 확률(top_logprobs)로 기대 점수(1~5 사이 실수)를 낸다. 출력 토큰은 늘지 않는다."""
@@ -198,9 +243,19 @@ class GoldLlm:
 
 
 class DropCounter(logging.Handler):
+    """워커가 버린 카드 수(경고 로그)를 센다. 녹음을 여러 스레드로 돌려도 섞이지 않게 스레드마다 따로 센다."""
+
     def __init__(self):
         super().__init__(logging.WARNING)
-        self.n = 0
+        self._local = threading.local()
+
+    @property
+    def n(self):
+        return getattr(self._local, "n", 0)
+
+    @n.setter
+    def n(self, v):
+        self._local.n = v
 
     def emit(self, record):
         self.n += 1
@@ -317,16 +372,17 @@ def aggregate(recs: list[dict]) -> dict:
     }
 
 
-def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter, limit: int | None) -> list[dict]:
-    recs = []
+def run_set(set_dir: Path, llm0, mock: bool, drop: DropCounter, limit: int | None, jobs: int = 1) -> list[dict]:
     files = [f for f in sorted(set_dir.glob("*.json")) if not f.name.endswith(".gold.json")]
-    for f in files[:limit]:
+
+    def one(f):
+        llm = copy.copy(llm0)  # 녹음마다 따로(호출 기록·정답이 스레드끼리 섞이지 않게)
         msg = json.loads(f.read_text())
         gold = json.loads(f.with_name(f.stem + ".gold.json").read_text())
         sents = sorted(msg["sentences"], key=lambda s: s["startMs"])
         llm.calls = []
         llm.cur_sents = sents
-        if mock:
+        if mock or getattr(llm, "gold_detect", False):
             llm.gold = gold
         drop.n = 0
         t0 = time.perf_counter()
@@ -349,10 +405,15 @@ def run_set(set_dir: Path, llm, mock: bool, drop: DropCounter, limit: int | None
                  call_stats=[{"name": c["name"], "in": c["stat"].get("prompt_tokens"),
                               "out": c["stat"].get("completion_tokens"), "wall_s": c["stat"].get("wall_s")}
                              for c in llm.calls if not c.get("skipped")])
-        recs.append(r)
         print(f"  {set_dir.name}/{f.stem}: 카드 {r['n_pred']} 정답 {r['n_gold']} 맞음 {r['n_match']} "
               f"오탐 {len(r['fp'])} {wall:.0f}s{' 실패: ' + err if err else ''}", flush=True)
-    return recs
+        return r
+
+    if jobs <= 1:
+        return [one(f) for f in files[:limit]]
+    # 정확도는 그대로고 시간(wall_s, time)만 서로 섞인다. 서버를 -np jobs 이상으로 띄워야 한다
+    with concurrent.futures.ThreadPoolExecutor(jobs) as ex:
+        return list(ex.map(one, files[:limit]))
 
 
 def fmt_range(vals):
@@ -377,6 +438,10 @@ def main() -> None:
     ap.add_argument("--mock", choices=["gold"])
     ap.add_argument("--skip-speakers", action="store_true",
                     help="화자 나누기를 부르지 않음(이야기 찾기만 비교할 때, 시간 약 1/3)")
+    ap.add_argument("--gold-detect", action="store_true",
+                    help="이야기 찾기는 정답을 그대로 쓰고 화자 나누기만 실제 모델로 잼(같은 이야기로 화자 방식 비교)")
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="녹음을 동시에 몇 개 돌릴지(연구 서버에서 빨리 잴 때. llama-server를 -np N으로 띄워야 함. 시간 지표는 못 씀)")
     ap.add_argument("--limit", type=int, help="세트마다 앞에서 N개 녹음만 (빠른 확인용)")
     ap.add_argument("--out", default=str(HERE / "results"))
     args = ap.parse_args()
@@ -391,7 +456,8 @@ def main() -> None:
         llm = GoldLlm()
     else:
         llm = RecLlm(args.base_url, args.model, args.api_key, temperature=v.get("temperature", 0.2),
-                     skip_speakers=args.skip_speakers, chunk=v.get("detect_chunk"), verify=v.get("verify"))
+                     skip_speakers=args.skip_speakers, chunk=v.get("detect_chunk"), verify=v.get("verify"),
+                     speaker=v.get("speaker"), gold_detect=args.gold_detect)
         llm.wait_ready(60)
 
     out = Path(args.out) / args.tag
@@ -401,7 +467,7 @@ def main() -> None:
         print(f"[{args.tag}] {run}/{args.runs}번째", flush=True)
         for sd in args.sets:
             sd = Path(sd)
-            recs = run_set(sd, llm, bool(args.mock), drop, args.limit)
+            recs = run_set(sd, llm, bool(args.mock), drop, args.limit, args.jobs)
             agg = aggregate(recs)
             table.setdefault(sd.name, []).append(agg)
             (out / f"{sd.name}.run{run}.json").write_text(
