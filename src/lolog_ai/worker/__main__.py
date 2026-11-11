@@ -26,7 +26,7 @@ from .detect import detect
 from .llm import Llm
 
 log = logging.getLogger("lolog_ai.worker")
-GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "FRIEND_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
+GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
 FAIL_KEY = "lolog:worker:fail:{}"
 RETRY_DELAYS = [5, 30]  # 1번째, 2번째 실패 뒤 기다리는 초
 
@@ -83,7 +83,7 @@ class Worker:
                      msg["jobId"], len(result["cards"]), result["carryFromMs"])
         elif msg.get("kind") == "avatar":
             avatar(msg, self.api)
-            log.info("job %s 아바타 완료: friend %s", msg["jobId"], msg["friendId"])
+            log.info("job %s 프로필 캐릭터 완료: user %s", msg["jobId"], msg["userId"])
         else:
             comic(msg, self.api, self.llm)
             log.info("job %s 만화 완료: comic %s", msg["jobId"], msg["comicId"])

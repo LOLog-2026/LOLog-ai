@@ -13,7 +13,7 @@ FLUX_NF4_DIR에 저장해 두고 다음부터는 거기서 바로 읽는다.
   FLUX_NF4_DIR   기본 /opt/lolog/models/flux2-klein-4b-nf4
   FLUX_LORA      화풍 LoRA(.safetensors) 경로. 없으면 원본 그대로
 
-참조 그림: 콘티 화자에 기본 화자·친구 아바타가 붙어 있으면 그 화자가 나오는 컷에 그림을 FLUX.2 klein의
+참조 그림: 콘티 화자에 기본 화자·프로필 캐릭터가 붙어 있으면 그 화자가 나오는 컷에 그림을 FLUX.2 klein의
 참조 이미지(image)로 넣는다. 2호 벤치(2026-11-10): 참조 3장까지 메모리 부족 없음, 컷 23초 → 384px 참조 1장
 26초·2장 30초·3장 37초. 384와 512는 눈으로 차이가 없어 384로 줄여 넣는다.
 """
@@ -161,7 +161,7 @@ def draw(storyboard: dict, seed: int, refs: dict | None = None) -> bytes:
 
 
 def draw_avatar(photo, appearance: str, seed: int) -> bytes:
-    """친구 사진 → 기본 화자와 같은 화풍·구도의 768 아바타 PNG. 사진은 메모리에서만 쓴다."""
+    """본인 사진 → 기본 화자와 같은 화풍·구도의 768 프로필 캐릭터 PNG. 사진은 메모리에서만 쓴다."""
     from PIL import ImageOps
 
     from ..render import portrait_prompt

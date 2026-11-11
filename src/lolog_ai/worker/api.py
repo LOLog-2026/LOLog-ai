@@ -64,12 +64,13 @@ class InternalApi:
     def post_image(self, comic_id: int, png: bytes) -> None:
         self._post_png(f"/internal/comics/{comic_id}/image", png, "comic.png")
 
-    def get_friend_photo(self, friend_id: int) -> bytes:
-        return self._send("GET", f"/internal/friends/{friend_id}/photo")
+    def get_character_photo(self, user_id: int) -> bytes:
+        """프로필 캐릭터 원본 사진(characters.md /internal). 이미 지워졌으면 404 CHARACTER_NOT_FOUND."""
+        return self._send("GET", f"/internal/users/{user_id}/character/photo")
 
-    def post_friend_avatar(self, friend_id: int, png: bytes, appearance: str) -> None:
+    def post_character_avatar(self, user_id: int, png: bytes, appearance: str) -> None:
         """appearance는 백엔드가 저장해 두었다가 만화 source의 character.appearance로 돌려준다."""
-        self._post_png(f"/internal/friends/{friend_id}/avatar", png, "avatar.png", {"appearance": appearance})
+        self._post_png(f"/internal/users/{user_id}/character/avatar", png, "avatar.png", {"appearance": appearance})
 
     def fetch(self, url: str) -> bytes:
         """source의 imageUrl(서명 주소) 받기. 서명 주소라 내부 토큰을 붙이지 않는다."""
