@@ -21,9 +21,9 @@ import redis
 
 from . import config as cfgmod
 from .api import ApiError, InternalApi
-from .comic import StoryboardInvalid, avatar, comic
 from .detect import detect
 from .llm import Llm
+from .storyboard_gen import StoryboardInvalid
 
 log = logging.getLogger("lolog_ai.worker")
 GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
@@ -82,9 +82,11 @@ class Worker:
             log.info("job %s 감지 완료: 카드 %d개, carryFromMs=%s",
                      msg["jobId"], len(result["cards"]), result["carryFromMs"])
         elif msg.get("kind") == "avatar":
+            from .comic import avatar  # 만화 코드(Pillow 등)는 2호에만 있어도 되게 여기서 부른다
             avatar(msg, self.api)
             log.info("job %s 프로필 캐릭터 완료: user %s", msg["jobId"], msg["userId"])
         else:
+            from .comic import comic
             comic(msg, self.api, self.llm)
             log.info("job %s 만화 완료: comic %s", msg["jobId"], msg["comicId"])
 
