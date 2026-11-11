@@ -62,8 +62,24 @@ def voice_for(appearance: str, seed: int = 0, available: set[str] | None = None)
     return DEFAULT_VOICE
 
 
+def _local(model_id: str) -> str:
+    """받아 둔 모델이면 그 폴더 경로. 모델 이름으로 읽으면 transformers 4.57이 토크나이저를 읽다가 허브에
+    모델 정보를 물어봐서 HF_HUB_OFFLINE=1(인터넷 없는 젯슨)에서 죽는다. 폴더 경로로 주면 묻지 않는다."""
+    if Path(model_id).exists():
+        return model_id
+    try:
+        from huggingface_hub import snapshot_download
+        return snapshot_download(model_id, local_files_only=True)
+    except Exception:  # 아직 안 받았으면 이름 그대로(받으면서 읽는다)
+        return model_id
+
+
 class Tts:
-    def __init__(self, voices_dir: str | Path, model: str = MODEL, device: str | None = None):
+    def __init__(self, voices_dir: str | Path, model: str = MODEL, device: str | None = None,
+                 xvec_only: bool = False):
+        """xvec_only: 참조 음성의 화자 벡터만 쓴다(참조 음성의 내용·말투는 넘기지 않음)."""
+        self.xvec_only = xvec_only
+        self.last_tries = 0
         self.voices_dir = Path(voices_dir)
         self.model_id = model
         self.device = device
@@ -80,7 +96,7 @@ class Tts:
 
             dev = self.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
             dtype = torch.bfloat16 if dev.startswith("cuda") else torch.float32
-            self._model = Qwen3TTSModel.from_pretrained(self.model_id, device_map=dev, dtype=dtype,
+            self._model = Qwen3TTSModel.from_pretrained(_local(self.model_id), device_map=dev, dtype=dtype,
                                                         attn_implementation="sdpa")
         return self._model
 
@@ -99,7 +115,8 @@ class Tts:
             wav = self.voices_dir / f"{voice}.wav"
             if not wav.exists():
                 raise FileNotFoundError(f"목소리 클립이 없음: {wav}")
-            self._prompts[voice] = self.load().create_voice_clone_prompt(ref_audio=str(wav), ref_text=GREETING)
+            self._prompts[voice] = self.load().create_voice_clone_prompt(
+                ref_audio=str(wav), ref_text=GREETING, x_vector_only_mode=self.xvec_only)
         return self._prompts[voice]
 
     def say(self, voice: str, text: str, seed: int = 0, tries: int = 3):
@@ -120,8 +137,39 @@ class Tts:
             wavs, sr = model.generate_voice_clone(text=text, language="Korean", voice_clone_prompt=prompt,
                                                   max_new_tokens=int(limit * 1.5 * TOKENS_PER_SECOND))
             wav = wavs[0]
+            self.last_tries = k + 1
             if best is None or len(wav) < len(best[0]):
                 best = (wav, sr)
             if len(wav) / sr <= limit:
                 break
         return best
+
+
+def main() -> None:
+    """설치 확인용: python tts.py VOICES_DIR [--voice young-f-01] [--text ...] [--out hello.wav]"""
+    import argparse
+    import time
+
+    import soundfile as sf
+
+    ap = argparse.ArgumentParser(description="인사 클립 목소리로 한 줄 읽어 본다")
+    ap.add_argument("voices")
+    ap.add_argument("--voice", default=DEFAULT_VOICE)
+    ap.add_argument("--text", default="설치가 끝났어요. 이제 대사를 읽을 수 있어요.")
+    ap.add_argument("--out", default="hello.wav")
+    a = ap.parse_args()
+
+    tts = Tts(a.voices)
+    if a.voice not in tts.voices():
+        raise SystemExit(f"{a.voices}에 {a.voice}.wav가 없어요 (있는 목소리 {len(tts.voices())}개)")
+    t0 = time.perf_counter()
+    tts.load()
+    t1 = time.perf_counter()
+    wav, sr = tts.say(a.voice, a.text)
+    sec = time.perf_counter() - t1
+    sf.write(a.out, wav, sr)
+    print(f"[ok] 모델 올림 {t1 - t0:.1f}초, 읽기 {sec:.1f}초, 소리 {len(wav) / sr:.1f}초 → {a.out}")
+
+
+if __name__ == "__main__":
+    main()

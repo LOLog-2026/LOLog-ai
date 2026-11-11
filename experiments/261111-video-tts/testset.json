@@ -1,0 +1,1010 @@
+[
+ {
+  "cat": "short",
+  "text": "뭘 알았는데",
+  "expect": "뭘 알았는데",
+  "id": 0,
+  "voice": "kid-f-01"
+ },
+ {
+  "cat": "short",
+  "text": "많이 샀어",
+  "expect": "많이 샀어",
+  "id": 1,
+  "voice": "kid-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "그냥 하루 종일 기차 여행을 한 거네",
+  "expect": "그냥 하루 종일 기차 여행을 한 거네",
+  "id": 2,
+  "voice": "kid-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "나 지난주에 회사 건강 검진 받았는데",
+  "expect": "나 지난주에 회사 건강 검진 받았는데",
+  "id": 3,
+  "voice": "kid-f-04"
+ },
+ {
+  "cat": "hard-short",
+  "text": "아니.",
+  "expect": "아니",
+  "id": 4,
+  "voice": "kid-m-01"
+ },
+ {
+  "cat": "long",
+  "text": "진짜 짝꿍이었어 걔는 내가 소식 듣고 축하하러 온 줄 알고 울려고 했어",
+  "expect": "진짜 짝꿍이었어 걔는 내가 소식 듣고 축하하러 온 줄 알고 울려고 했어",
+  "id": 5,
+  "voice": "kid-m-02"
+ },
+ {
+  "cat": "medium",
+  "text": "뭐로 정했는데",
+  "expect": "뭐로 정했는데",
+  "id": 6,
+  "voice": "kid-m-03"
+ },
+ {
+  "cat": "short",
+  "text": "아 귀엽다",
+  "expect": "아 귀엽다",
+  "id": 7,
+  "voice": "kid-m-04"
+ },
+ {
+  "cat": "medium",
+  "text": "맞아 그건 인정",
+  "expect": "맞아 그건 인정",
+  "id": 8,
+  "voice": "young-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "그럼 나랑 하자 근데 나는 바쁘니까 토요일만 돼 이러더라",
+  "expect": "그럼 나랑 하자 근데 나는 바쁘니까 토요일만 돼 이러더라",
+  "id": 9,
+  "voice": "young-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "너는 안 눌렀어",
+  "expect": "너는 안 눌렀어",
+  "id": 10,
+  "voice": "young-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "아버님 운동 제대로 하셨네",
+  "expect": "아버님 운동 제대로 하셨네",
+  "id": 11,
+  "voice": "young-f-04"
+ },
+ {
+  "cat": "hard-english",
+  "text": "유튜브에서 봤는데 진짜래",
+  "expect": "유튜브에서 봤는데 진짜래",
+  "id": 12,
+  "voice": "young-m-01"
+ },
+ {
+  "cat": "medium",
+  "text": "어제 남자 친구랑 영화 보러 갔는데",
+  "expect": "어제 남자 친구랑 영화 보러 갔는데",
+  "id": 13,
+  "voice": "young-m-02"
+ },
+ {
+  "cat": "medium",
+  "text": "혼고기 멋있다",
+  "expect": "혼고기 멋있다",
+  "id": 14,
+  "voice": "young-m-03"
+ },
+ {
+  "cat": "short",
+  "text": "뭐로 갔는데",
+  "expect": "뭐로 갔는데",
+  "id": 15,
+  "voice": "young-m-04"
+ },
+ {
+  "cat": "medium",
+  "text": "잠깐만 우리 뭐 시킬까 배고프다",
+  "expect": "잠깐만 우리 뭐 시킬까 배고프다",
+  "id": 16,
+  "voice": "middle-f-01"
+ },
+ {
+  "cat": "short",
+  "text": "아 경주",
+  "expect": "아 경주",
+  "id": 17,
+  "voice": "middle-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "남의 집 관리실에서 덕담을 받으셨네",
+  "expect": "남의 집 관리실에서 덕담을 받으셨네",
+  "id": 18,
+  "voice": "middle-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "왜 뭐 잘못됐어",
+  "expect": "왜 뭐 잘못됐어",
+  "id": 19,
+  "voice": "middle-f-04"
+ },
+ {
+  "cat": "medium",
+  "text": "몇 분 기다렸어",
+  "expect": "몇 분 기다렸어",
+  "id": 20,
+  "voice": "middle-m-01"
+ },
+ {
+  "cat": "medium",
+  "text": "왜 하필 제일 긴 거야",
+  "expect": "왜 하필 제일 긴 거야",
+  "id": 21,
+  "voice": "middle-m-02"
+ },
+ {
+  "cat": "long",
+  "text": "그거 말고 결혼식 하객 알바 들어 봤어",
+  "expect": "그거 말고 결혼식 하객 알바 들어 봤어",
+  "id": 22,
+  "voice": "middle-m-03"
+ },
+ {
+  "cat": "short",
+  "text": "아니",
+  "expect": "아니",
+  "id": 23,
+  "voice": "middle-m-04"
+ },
+ {
+  "cat": "hard-digit",
+  "text": "버스가 20분째 안 와",
+  "expect": "버스가 이십 분째 안 와",
+  "id": 24,
+  "voice": "kid-f-01"
+ },
+ {
+  "cat": "medium",
+  "text": "사촌 언니가 좋아했겠네",
+  "expect": "사촌 언니가 좋아했겠네",
+  "id": 25,
+  "voice": "kid-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "몇 점 나오시는데",
+  "expect": "몇 점 나오시는데",
+  "id": 26,
+  "voice": "kid-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "반 애들 다 뒤집어졌었어",
+  "expect": "반 애들 다 뒤집어졌었어",
+  "id": 27,
+  "voice": "kid-f-04"
+ },
+ {
+  "cat": "long",
+  "text": "그날도 합주하는데 갑자기 학생회관 전체가 정전이 된 거야",
+  "expect": "그날도 합주하는데 갑자기 학생회관 전체가 정전이 된 거야",
+  "id": 28,
+  "voice": "kid-m-01"
+ },
+ {
+  "cat": "hard-jamo",
+  "text": "ㅋㅋㅋㅋ 아 진짜 웃겨",
+  "expect": "아 진짜 웃겨",
+  "id": 29,
+  "voice": "kid-m-02"
+ },
+ {
+  "cat": "short",
+  "text": "오 어땠어",
+  "expect": "오 어땠어",
+  "id": 30,
+  "voice": "kid-m-03"
+ },
+ {
+  "cat": "hard-short",
+  "text": "응.",
+  "expect": "응",
+  "id": 31,
+  "voice": "kid-m-04"
+ },
+ {
+  "cat": "medium",
+  "text": "무섭다 너 감시당하는 거 아니야",
+  "expect": "무섭다 너 감시당하는 거 아니야",
+  "id": 32,
+  "voice": "young-f-01"
+ },
+ {
+  "cat": "hard-digit",
+  "text": "3시에 만나기로 했잖아",
+  "expect": "세 시에 만나기로 했잖아",
+  "id": 33,
+  "voice": "young-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "그게 어디서 나왔어",
+  "expect": "그게 어디서 나왔어",
+  "id": 34,
+  "voice": "young-f-03"
+ },
+ {
+  "cat": "long",
+  "text": "다들 그렇게 생각했지 근데 일 등이 보안팀이었어",
+  "expect": "다들 그렇게 생각했지 근데 일 등이 보안팀이었어",
+  "id": 35,
+  "voice": "young-f-04"
+ },
+ {
+  "cat": "long",
+  "text": "손이 기억한다고 했잖아 그 선배가 그래서 다들 웃었는데",
+  "expect": "손이 기억한다고 했잖아 그 선배가 그래서 다들 웃었는데",
+  "id": 36,
+  "voice": "young-m-01"
+ },
+ {
+  "cat": "medium",
+  "text": "동생한테 전화는",
+  "expect": "동생한테 전화는",
+  "id": 37,
+  "voice": "young-m-02"
+ },
+ {
+  "cat": "long",
+  "text": "처음엔 의자 끄는 소리 나고 종이 넘기는 소리 나고",
+  "expect": "처음엔 의자 끄는 소리 나고 종이 넘기는 소리 나고",
+  "id": 38,
+  "voice": "young-m-03"
+ },
+ {
+  "cat": "short",
+  "text": "잘했네",
+  "expect": "잘했네",
+  "id": 39,
+  "voice": "young-m-04"
+ },
+ {
+  "cat": "hard-exclaim",
+  "text": "아 맞다!",
+  "expect": "아 맞다",
+  "id": 40,
+  "voice": "middle-f-01"
+ },
+ {
+  "cat": "medium",
+  "text": "어디서 뭐 주워 먹는 거 아니야",
+  "expect": "어디서 뭐 주워 먹는 거 아니야",
+  "id": 41,
+  "voice": "middle-f-02"
+ },
+ {
+  "cat": "short",
+  "text": "누구였어",
+  "expect": "누구였어",
+  "id": 42,
+  "voice": "middle-f-03"
+ },
+ {
+  "cat": "long",
+  "text": "아이스 아메리카노가 아이으 아메이카노 이렇게 나와",
+  "expect": "아이스 아메리카노가 아이으 아메이카노 이렇게 나와",
+  "id": 43,
+  "voice": "middle-f-04"
+ },
+ {
+  "cat": "medium",
+  "text": "이사한 지 얼마 안 돼서",
+  "expect": "이사한 지 얼마 안 돼서",
+  "id": 44,
+  "voice": "middle-m-01"
+ },
+ {
+  "cat": "long",
+  "text": "방송이 하나도 안 나와서 이상하다 했는데",
+  "expect": "방송이 하나도 안 나와서 이상하다 했는데",
+  "id": 45,
+  "voice": "middle-m-02"
+ },
+ {
+  "cat": "medium",
+  "text": "응 무슨 소리야",
+  "expect": "응 무슨 소리야",
+  "id": 46,
+  "voice": "middle-m-03"
+ },
+ {
+  "cat": "short",
+  "text": "재밌었어",
+  "expect": "재밌었어",
+  "id": 47,
+  "voice": "middle-m-04"
+ },
+ {
+  "cat": "short",
+  "text": "와 최악이다",
+  "expect": "와 최악이다",
+  "id": 48,
+  "voice": "kid-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "그래도 결과를 숨기지 않고 발표하신 게 대단하다",
+  "expect": "그래도 결과를 숨기지 않고 발표하신 게 대단하다",
+  "id": 49,
+  "voice": "kid-f-02"
+ },
+ {
+  "cat": "long",
+  "text": "아니 그건 아니고 우리 엄마가 낮에 마당에 풀어 놓잖아",
+  "expect": "아니 그건 아니고 우리 엄마가 낮에 마당에 풀어 놓잖아",
+  "id": 50,
+  "voice": "kid-f-03"
+ },
+ {
+  "cat": "long",
+  "text": "응 다들 신입이 물건이라고 박수 치시고 끝나고 해장국까지 사 주셨어",
+  "expect": "응 다들 신입이 물건이라고 박수 치시고 끝나고 해장국까지 사 주셨어",
+  "id": 51,
+  "voice": "kid-f-04"
+ },
+ {
+  "cat": "hard-digit",
+  "text": "그거 5만 원이나 해?",
+  "expect": "그거 오만 원이나 해",
+  "id": 52,
+  "voice": "kid-m-01"
+ },
+ {
+  "cat": "short",
+  "text": "아 그 얘기",
+  "expect": "아 그 얘기",
+  "id": 53,
+  "voice": "kid-m-02"
+ },
+ {
+  "cat": "hard-short",
+  "text": "어?",
+  "expect": "어",
+  "id": 54,
+  "voice": "kid-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "첫 요리가 갈비찜이면 너무 어려운데",
+  "expect": "첫 요리가 갈비찜이면 너무 어려운데",
+  "id": 55,
+  "voice": "kid-m-04"
+ },
+ {
+  "cat": "hard-english",
+  "text": "그거 OK라고 했잖아",
+  "expect": "그거 오케이라고 했잖아",
+  "id": 56,
+  "voice": "young-f-01"
+ },
+ {
+  "cat": "hard-jamo",
+  "text": "헐 대박ㅋㅋ",
+  "expect": "헐 대박",
+  "id": 57,
+  "voice": "young-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "조건이 까다롭네",
+  "expect": "조건이 까다롭네",
+  "id": 58,
+  "voice": "young-f-03"
+ },
+ {
+  "cat": "long",
+  "text": "민박 아주머니가 불쌍했는지 김치 한 통 갖다주셨잖아",
+  "expect": "민박 아주머니가 불쌍했는지 김치 한 통 갖다주셨잖아",
+  "id": 59,
+  "voice": "young-f-04"
+ },
+ {
+  "cat": "short",
+  "text": "귀엽네",
+  "expect": "귀엽네",
+  "id": 60,
+  "voice": "young-m-01"
+ },
+ {
+  "cat": "long",
+  "text": "응 접는 낚싯대랑 찌랑 미끼 통이랑 냄새가 장난 아니었어",
+  "expect": "응 접는 낚싯대랑 찌랑 미끼 통이랑 냄새가 장난 아니었어",
+  "id": 61,
+  "voice": "young-m-02"
+ },
+ {
+  "cat": "short",
+  "text": "어디 갔대",
+  "expect": "어디 갔대",
+  "id": 62,
+  "voice": "young-m-03"
+ },
+ {
+  "cat": "long",
+  "text": "너네 고등학교 졸업하고 셋이 처음 여행 갔던 거 기억나",
+  "expect": "너네 고등학교 졸업하고 셋이 처음 여행 갔던 거 기억나",
+  "id": 63,
+  "voice": "young-m-04"
+ },
+ {
+  "cat": "long",
+  "text": "응 직원분이 알아들으시고 웃으면서 대답도 해 주셨어",
+  "expect": "응 직원분이 알아들으시고 웃으면서 대답도 해 주셨어",
+  "id": 64,
+  "voice": "middle-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "그니까 바로 항공사에 전화했더니 그분도 연락이 와 있었대",
+  "expect": "그니까 바로 항공사에 전화했더니 그분도 연락이 와 있었대",
+  "id": 65,
+  "voice": "middle-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "본인 세차 했네",
+  "expect": "본인 세차 했네",
+  "id": 66,
+  "voice": "middle-f-03"
+ },
+ {
+  "cat": "short",
+  "text": "아니 뭔데",
+  "expect": "아니 뭔데",
+  "id": 67,
+  "voice": "middle-f-04"
+ },
+ {
+  "cat": "long",
+  "text": "어제 집에 가는데 비밀번호가 안 맞는 거야",
+  "expect": "어제 집에 가는데 비밀번호가 안 맞는 거야",
+  "id": 68,
+  "voice": "middle-m-01"
+ },
+ {
+  "cat": "long",
+  "text": "차은우 사진 보여줬더니 디자이너분이 한참 보시더니",
+  "expect": "차은우 사진 보여줬더니 디자이너분이 한참 보시더니",
+  "id": 69,
+  "voice": "middle-m-02"
+ },
+ {
+  "cat": "medium",
+  "text": "축의금은 어떻게 됐어",
+  "expect": "축의금은 어떻게 됐어",
+  "id": 70,
+  "voice": "middle-m-03"
+ },
+ {
+  "cat": "long",
+  "text": "들어가자마자 첫 질문이 우리 회사 제품 써 본 거 있냐는 거였어",
+  "expect": "들어가자마자 첫 질문이 우리 회사 제품 써 본 거 있냐는 거였어",
+  "id": 71,
+  "voice": "middle-m-04"
+ },
+ {
+  "cat": "long",
+  "text": "카페에서 기다리면서 탑승 안내 방송만 듣고 있었는데",
+  "expect": "카페에서 기다리면서 탑승 안내 방송만 듣고 있었는데",
+  "id": 72,
+  "voice": "kid-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "너 기억나 우리 고등학교 때 반 장기 자랑",
+  "expect": "너 기억나 우리 고등학교 때 반 장기 자랑",
+  "id": 73,
+  "voice": "kid-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "아 내 거 택배 문자야 신경 쓰지 마",
+  "expect": "아 내 거 택배 문자야 신경 쓰지 마",
+  "id": 74,
+  "voice": "kid-f-03"
+ },
+ {
+  "cat": "long",
+  "text": "복학생 형 맞지 첫 모임 때 딱 한 번 보고",
+  "expect": "복학생 형 맞지 첫 모임 때 딱 한 번 보고",
+  "id": 75,
+  "voice": "kid-f-04"
+ },
+ {
+  "cat": "short",
+  "text": "오 드디어",
+  "expect": "오 드디어",
+  "id": 76,
+  "voice": "kid-m-01"
+ },
+ {
+  "cat": "long",
+  "text": "아빠가 명절마다 세뱃돈을 봉투에 하나씩 넣어서 덕담 쪽지까지 써 주시거든",
+  "expect": "아빠가 명절마다 세뱃돈을 봉투에 하나씩 넣어서 덕담 쪽지까지 써 주시거든",
+  "id": 77,
+  "voice": "kid-m-02"
+ },
+ {
+  "cat": "hard-english",
+  "text": "나 오늘 PT 받고 왔어",
+  "expect": "나 오늘 피티 받고 왔어",
+  "id": 78,
+  "voice": "kid-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "응 줄자 들고 교문에 서 계셨잖아",
+  "expect": "응 줄자 들고 교문에 서 계셨잖아",
+  "id": 79,
+  "voice": "kid-m-04"
+ },
+ {
+  "cat": "long",
+  "text": "응 계속 잡고 있다고 해서 열심히 페달 밟았는데",
+  "expect": "응 계속 잡고 있다고 해서 열심히 페달 밟았는데",
+  "id": 80,
+  "voice": "young-f-01"
+ },
+ {
+  "cat": "short",
+  "text": "귀엽다",
+  "expect": "귀엽다",
+  "id": 81,
+  "voice": "young-f-02"
+ },
+ {
+  "cat": "hard-long",
+  "text": "그래서 선생님이 누구냐고 물어봤는데 아무도 대답을 안 해서 결국 다 같이 남았어",
+  "expect": "그래서 선생님이 누구냐고 물어봤는데 아무도 대답을 안 해서 결국 다 같이 남았어",
+  "id": 82,
+  "voice": "young-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "그럼 다들 엄청 조심했겠다",
+  "expect": "그럼 다들 엄청 조심했겠다",
+  "id": 83,
+  "voice": "young-f-04"
+ },
+ {
+  "cat": "long",
+  "text": "그 막내 기억나 우리 전역할 때 이등병이었던 애",
+  "expect": "그 막내 기억나 우리 전역할 때 이등병이었던 애",
+  "id": 84,
+  "voice": "young-m-01"
+ },
+ {
+  "cat": "short",
+  "text": "바뀌었어",
+  "expect": "바뀌었어",
+  "id": 85,
+  "voice": "young-m-02"
+ },
+ {
+  "cat": "medium",
+  "text": "그럼 왜 칠하라고 한 거야",
+  "expect": "그럼 왜 칠하라고 한 거야",
+  "id": 86,
+  "voice": "young-m-03"
+ },
+ {
+  "cat": "hard-exclaim",
+  "text": "와... 진짜 대단하다...",
+  "expect": "와 진짜 대단하다",
+  "id": 87,
+  "voice": "young-m-04"
+ },
+ {
+  "cat": "short",
+  "text": "오 뭐 쓰셔",
+  "expect": "오 뭐 쓰셔",
+  "id": 88,
+  "voice": "middle-f-01"
+ },
+ {
+  "cat": "short",
+  "text": "아 그날",
+  "expect": "아 그날",
+  "id": 89,
+  "voice": "middle-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "그거 말하는구나",
+  "expect": "그거 말하는구나",
+  "id": 90,
+  "voice": "middle-f-03"
+ },
+ {
+  "cat": "long",
+  "text": "이사 첫날 옷 정리하려고 장 문을 열었는데",
+  "expect": "이사 첫날 옷 정리하려고 장 문을 열었는데",
+  "id": 91,
+  "voice": "middle-f-04"
+ },
+ {
+  "cat": "short",
+  "text": "무슨 공지",
+  "expect": "무슨 공지",
+  "id": 92,
+  "voice": "middle-m-01"
+ },
+ {
+  "cat": "medium",
+  "text": "전세 버스네 완전",
+  "expect": "전세 버스네 완전",
+  "id": 93,
+  "voice": "middle-m-02"
+ },
+ {
+  "cat": "short",
+  "text": "열두 살",
+  "expect": "열두 살",
+  "id": 94,
+  "voice": "middle-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "누가 가져갔나",
+  "expect": "누가 가져갔나",
+  "id": 95,
+  "voice": "middle-m-04"
+ },
+ {
+  "cat": "long",
+  "text": "철거하기 전에 높은 분이 시찰 오신다고 칠한 거래",
+  "expect": "철거하기 전에 높은 분이 시찰 오신다고 칠한 거래",
+  "id": 96,
+  "voice": "kid-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "아니 에어팟 산다고 만났는데 그분이 케이스만 들고 나온 거야",
+  "expect": "아니 에어팟 산다고 만났는데 그분이 케이스만 들고 나온 거야",
+  "id": 97,
+  "voice": "kid-f-02"
+ },
+ {
+  "cat": "short",
+  "text": "어디 가는데",
+  "expect": "어디 가는데",
+  "id": 98,
+  "voice": "kid-f-03"
+ },
+ {
+  "cat": "hard-jamo",
+  "text": "아니 ㅎㅎ 그게 아니고",
+  "expect": "아니 그게 아니고",
+  "id": 99,
+  "voice": "kid-f-04"
+ },
+ {
+  "cat": "hard-short",
+  "text": "뭐?",
+  "expect": "뭐",
+  "id": 100,
+  "voice": "kid-m-01"
+ },
+ {
+  "cat": "medium",
+  "text": "지금 생각하면 그것도 엄청 싼 거였어",
+  "expect": "지금 생각하면 그것도 엄청 싼 거였어",
+  "id": 101,
+  "voice": "kid-m-02"
+ },
+ {
+  "cat": "short",
+  "text": "생각난다",
+  "expect": "생각난다",
+  "id": 102,
+  "voice": "kid-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "무난하네 그거 하면 되겠다",
+  "expect": "무난하네 그거 하면 되겠다",
+  "id": 103,
+  "voice": "kid-m-04"
+ },
+ {
+  "cat": "medium",
+  "text": "걔 있는 팀이 거의 매일 졌지",
+  "expect": "걔 있는 팀이 거의 매일 졌지",
+  "id": 104,
+  "voice": "young-f-01"
+ },
+ {
+  "cat": "medium",
+  "text": "그 통장 아직도 안 깨고 가지고 있어",
+  "expect": "그 통장 아직도 안 깨고 가지고 있어",
+  "id": 105,
+  "voice": "young-f-02"
+ },
+ {
+  "cat": "medium",
+  "text": "아 그래서 사촌 언니가 좋아했냐고",
+  "expect": "아 그래서 사촌 언니가 좋아했냐고",
+  "id": 106,
+  "voice": "young-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "아 어머님이 몰래 넣으신 거구나",
+  "expect": "아 어머님이 몰래 넣으신 거구나",
+  "id": 107,
+  "voice": "young-f-04"
+ },
+ {
+  "cat": "long",
+  "text": "학사모 대신 나뭇가지 들고 찍었어 경비 아저씨가 꺾어 주셔서",
+  "expect": "학사모 대신 나뭇가지 들고 찍었어 경비 아저씨가 꺾어 주셔서",
+  "id": 108,
+  "voice": "young-m-01"
+ },
+ {
+  "cat": "medium",
+  "text": "아직 연락하는 후임 있어",
+  "expect": "아직 연락하는 후임 있어",
+  "id": 109,
+  "voice": "young-m-02"
+ },
+ {
+  "cat": "short",
+  "text": "아 들켰네",
+  "expect": "아 들켰네",
+  "id": 110,
+  "voice": "young-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "서로 베고 잤네",
+  "expect": "서로 베고 잤네",
+  "id": 111,
+  "voice": "young-m-04"
+ },
+ {
+  "cat": "medium",
+  "text": "야 저기 우리 음식 나왔다 받아 올게",
+  "expect": "야 저기 우리 음식 나왔다 받아 올게",
+  "id": 112,
+  "voice": "middle-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "근데 얘가 탄 버스 우리 버스 아니었어 옆에 서 있던 다른 버스였어",
+  "expect": "근데 얘가 탄 버스 우리 버스 아니었어 옆에 서 있던 다른 버스였어",
+  "id": 113,
+  "voice": "middle-f-02"
+ },
+ {
+  "cat": "hard-exclaim",
+  "text": "잠깐만, 잠깐만, 잠깐만!",
+  "expect": "잠깐만 잠깐만 잠깐만",
+  "id": 114,
+  "voice": "middle-f-03"
+ },
+ {
+  "cat": "hard-long",
+  "text": "내가 분명히 냉장고에 넣어 놨는데 아침에 보니까 식탁 위에 그대로 있는 거야",
+  "expect": "내가 분명히 냉장고에 넣어 놨는데 아침에 보니까 식탁 위에 그대로 있는 거야",
+  "id": 115,
+  "voice": "middle-f-04"
+ },
+ {
+  "cat": "medium",
+  "text": "그렇지 사장님한테 먼저 물어봐야지",
+  "expect": "그렇지 사장님한테 먼저 물어봐야지",
+  "id": 116,
+  "voice": "middle-m-01"
+ },
+ {
+  "cat": "hard-repeat",
+  "text": "아니 아니 아니 그게 아니라",
+  "expect": "아니 아니 아니 그게 아니라",
+  "id": 117,
+  "voice": "middle-m-02"
+ },
+ {
+  "cat": "long",
+  "text": "지문은 맞게 나왔지 당연히 내 손가락이니까",
+  "expect": "지문은 맞게 나왔지 당연히 내 손가락이니까",
+  "id": 118,
+  "voice": "middle-m-03"
+ },
+ {
+  "cat": "long",
+  "text": "옛날에 우리 아빠가 나 자전거 가르쳐 줄 때",
+  "expect": "옛날에 우리 아빠가 나 자전거 가르쳐 줄 때",
+  "id": 119,
+  "voice": "middle-m-04"
+ },
+ {
+  "cat": "hard-digit",
+  "text": "나 어제 2시간밖에 못 잤어",
+  "expect": "나 어제 두 시간밖에 못 잤어",
+  "id": 120,
+  "voice": "kid-f-01"
+ },
+ {
+  "cat": "hard-jamo",
+  "text": "ㅠㅠ 나 어떡해",
+  "expect": "나 어떡해",
+  "id": 121,
+  "voice": "kid-f-02"
+ },
+ {
+  "cat": "long",
+  "text": "그러니까 나도 좀 이상했는데 맨 앞까지 가서 보니까",
+  "expect": "그러니까 나도 좀 이상했는데 맨 앞까지 가서 보니까",
+  "id": 122,
+  "voice": "kid-f-03"
+ },
+ {
+  "cat": "short",
+  "text": "할인율",
+  "expect": "할인율",
+  "id": 123,
+  "voice": "kid-f-04"
+ },
+ {
+  "cat": "medium",
+  "text": "엄청 고민하시더니 꽃 사진으로 하셨어",
+  "expect": "엄청 고민하시더니 꽃 사진으로 하셨어",
+  "id": 124,
+  "voice": "kid-m-01"
+ },
+ {
+  "cat": "short",
+  "text": "뭐라고",
+  "expect": "뭐라고",
+  "id": 125,
+  "voice": "kid-m-02"
+ },
+ {
+  "cat": "long",
+  "text": "나가자 있잖아 나라를 위하여 가정을 위하여 자기 자신을 위하여",
+  "expect": "나가자 있잖아 나라를 위하여 가정을 위하여 자기 자신을 위하여",
+  "id": 126,
+  "voice": "kid-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "어디로 갔는데 바다",
+  "expect": "어디로 갔는데 바다",
+  "id": 127,
+  "voice": "kid-m-04"
+ },
+ {
+  "cat": "short",
+  "text": "어려웠어",
+  "expect": "어려웠어",
+  "id": 128,
+  "voice": "young-f-01"
+ },
+ {
+  "cat": "medium",
+  "text": "잠결에 네 엄마 하고 대답했어",
+  "expect": "잠결에 네 엄마 하고 대답했어",
+  "id": 129,
+  "voice": "young-f-02"
+ },
+ {
+  "cat": "short",
+  "text": "오 잘 지내",
+  "expect": "오 잘 지내",
+  "id": 130,
+  "voice": "young-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "결혼식 시작하자마자 나가라고",
+  "expect": "결혼식 시작하자마자 나가라고",
+  "id": 131,
+  "voice": "young-f-04"
+ },
+ {
+  "cat": "hard-english",
+  "text": "그 카페 와이파이 비번이 뭐였지",
+  "expect": "그 카페 와이파이 비번이 뭐였지",
+  "id": 132,
+  "voice": "young-m-01"
+ },
+ {
+  "cat": "long",
+  "text": "팀장님이 맛있게 드세요 하고 회의 계속하셨어",
+  "expect": "팀장님이 맛있게 드세요 하고 회의 계속하셨어",
+  "id": 133,
+  "voice": "young-m-02"
+ },
+ {
+  "cat": "hard-exclaim",
+  "text": "야!!! 그걸 왜 먹어!!!",
+  "expect": "야 그걸 왜 먹어",
+  "id": 134,
+  "voice": "young-m-03"
+ },
+ {
+  "cat": "medium",
+  "text": "다음 날 아무도 그 얘기 안 했어",
+  "expect": "다음 날 아무도 그 얘기 안 했어",
+  "id": 135,
+  "voice": "young-m-04"
+ },
+ {
+  "cat": "short",
+  "text": "뭐 시켰는데",
+  "expect": "뭐 시켰는데",
+  "id": 136,
+  "voice": "middle-f-01"
+ },
+ {
+  "cat": "long",
+  "text": "우리 고등학교 때 교복 치마 줄였다가 걸린 거 기억나",
+  "expect": "우리 고등학교 때 교복 치마 줄였다가 걸린 거 기억나",
+  "id": 137,
+  "voice": "middle-f-02"
+ },
+ {
+  "cat": "long",
+  "text": "나는 시험 때문에 못 가고 엄마 혼자 먼저 가셨거든",
+  "expect": "나는 시험 때문에 못 가고 엄마 혼자 먼저 가셨거든",
+  "id": 138,
+  "voice": "middle-f-03"
+ },
+ {
+  "cat": "medium",
+  "text": "할머니 이거 너무 비싸요 해 놓고",
+  "expect": "할머니 이거 너무 비싸요 해 놓고",
+  "id": 139,
+  "voice": "middle-f-04"
+ },
+ {
+  "cat": "medium",
+  "text": "아니 흠집은 없는데",
+  "expect": "아니 흠집은 없는데",
+  "id": 140,
+  "voice": "middle-m-01"
+ },
+ {
+  "cat": "hard-repeat",
+  "text": "하하하하 진짜 웃기다",
+  "expect": "하하하하 진짜 웃기다",
+  "id": 141,
+  "voice": "middle-m-02"
+ },
+ {
+  "cat": "long",
+  "text": "할머니가 꼭 닭을 잡아 주시려고 했거든",
+  "expect": "할머니가 꼭 닭을 잡아 주시려고 했거든",
+  "id": 142,
+  "voice": "middle-m-03"
+ },
+ {
+  "cat": "long",
+  "text": "우리 엄마 학교에 불려 다니신 거 다 너 때문이었어",
+  "expect": "우리 엄마 학교에 불려 다니신 거 다 너 때문이었어",
+  "id": 143,
+  "voice": "middle-m-04"
+ }
+]
