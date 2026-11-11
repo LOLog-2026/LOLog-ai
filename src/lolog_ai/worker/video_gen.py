@@ -25,6 +25,10 @@ from .storyboard_gen import StoryboardInvalid, _character, card_text, fixed_look
 
 log = logging.getLogger(__name__)
 
+# 영상 길이 목표는 15~40초(VIDEO_EVAL_PLAN A5). 어림 길이(est_seconds)는 실제와 몇 초 어긋나서 여유를 둔다
+TARGET_MAX_S = 36.0
+BUDGET_LINES, BUDGET_CHARS = 10, 170
+
 SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 만화) 콘티를 만든다. 결과는 JSON 하나다.
 
 구성
@@ -60,6 +64,7 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - flashback이 아닌 장면은 화자가 한 명 이상 나온다
 
 대사(lines): 자막으로 뜨고 목소리로 읽힌다
+- 영상 전체 대사는 모두 합쳐 {BUDGET_LINES}개, {BUDGET_CHARS}자(공백 빼고) 안팎으로 한다. 카드 대화가 길면 상황 소개와 웃음 포인트에 필요한 대사만 남긴다
 - 장면당 0~{MAX_LINES}개. flashback이 아닌 장면에서는 speaker가 그 장면 cast에 있어야 한다. flashback 장면의 대사는 들려주는 사람의 목소리라 cast에 없어도 된다
 - text는 반드시 한국어로, 카드의 대사를 그대로 쓰거나 줄인다. 영어로 옮기지 않는다. {MAX_TEXT}자 이하(공백 포함). 원래 대사의 말투를 살려 줄인다. 카드의 대사 순서를 지킨다
 - 소리 내어 읽을 수 있게 쓴다. "ㅋㅋㅋ", "ㅠㅠ" 같은 낱자모와 이모티콘은 쓰지 않는다. 숫자는 "세 시", "오만 원"처럼 한글로 쓴다
@@ -292,6 +297,32 @@ def drop_phantoms(scene: dict, sb: dict) -> None:
         scene["scene"] = out
 
 
+def est_seconds(sb: dict) -> float:
+    """대사 글자 수(공백 빼고)와 대사 수로 어림한 영상 길이(초). #33 개발용 영상 76개에 맞춘 직선."""
+    lines = [d for s in sb["scenes"] for d in s["lines"]]
+    chars = sum(len(re.sub(r"\s", "", d["text"])) for d in lines)
+    return 2.9 + 0.109 * chars + 1.44 * len(lines)
+
+
+def trim_lines(sb: dict, limit_s: float = TARGET_MAX_S) -> None:
+    """어림 길이가 limit_s를 넘으면 가운데 장면의 대사를 하나씩 뺀다(#33 6차: 긴 대화 카드 3/12가 40초를 넘음).
+    첫 장면(상황 소개)과 마지막 두 장면(웃음 포인트·반응)은 건드리지 않는다. 대사가 많은 장면부터, 같으면 긴 대사부터
+    뺀다. 대사가 모두 빠진 장면은 장면 수가 최소보다 많을 때 없앤다."""
+    while est_seconds(sb) > limit_s:
+        mid = sb["scenes"][1:-2]
+        cands = [(len(s["lines"]), len(d["text"]), s, d) for s in mid for d in s["lines"]]
+        if not cands:
+            break
+        _, _, s, d = max(cands, key=lambda x: (x[0], x[1]))
+        s["lines"].remove(d)
+        if not s["lines"] and len(sb["scenes"]) > MIN_SCENES:
+            sb["scenes"].remove(s)
+    for i, s in enumerate(sb["scenes"]):
+        s["index"] = i + 1
+        if i == 0:
+            s["transition"] = "fade"
+
+
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -328,6 +359,7 @@ def assemble(raw: dict, src: dict) -> dict:
         _fix_flashback(sc, sb, drop_cast=sc["flashback"])
         fix_scene(sc, MAX_TEXT, MAX_LINES)
         drop_phantoms(sc, sb)
+    trim_lines(sb)
     sb["place"]["prompt"] = clean_scene(sb["place"]["prompt"])
     return sb
 
