@@ -85,6 +85,13 @@ VARIANTS.update({
     "kc8+verify": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
                    "verify": VERIFY_REASON},
     # 점수 토큰의 확률로 기대 점수를 받아 4점 안에서 더 잘게 거른다(출력 토큰은 그대로)
+    # 방송 오탐(1시간당 10개)이 확인 점수로는 안 걸러져, 방송 소리인지를 점수와 따로 묻는다
+    "kc8+verify-bc": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
+                      "verify": {"system": VERIFY_SYSTEM + """
+
+broadcast: 이 부분이 사람들이 직접 나눈 대화가 아니라 틀어 둔 방송 소리(TV·유튜브·라디오)면 true, 직접 나눈 대화면 false.
+방송의 단서: 진행자가 시청자나 게스트에게 하는 존댓말 멘트, 출연자·작품 소개, 코너 진행, 광고·제품 설명, 노래 가사, 여러 사람 말이 한 줄에 길게 이어짐""",
+                                 "reason": False, "logprobs": True, "broadcast": True}},
     "kc8+verify-lp": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},
                       "verify": {**VERIFY_SCORE, "logprobs": True}},
     "kc8+verify-s": {"detect_replace": [(OLD_KINDS, NEW_KINDS)], "detect_chunk": {"min": 8, "overlap": 3},

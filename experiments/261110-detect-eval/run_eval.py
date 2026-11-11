@@ -103,6 +103,8 @@ class RecLlm(Llm):
         props = {"score": {"type": "integer", "enum": [1, 2, 3, 4, 5]}}
         if self.verify.get("reason"):
             props = {"reason": {"type": "string", "maxLength": 60}, **props}
+        if self.verify.get("broadcast"):  # 방송 소리인지 먼저 따로 묻는다
+            props = {"broadcast": {"type": "boolean"}, **props}
         schema = {"type": "object", "properties": props, "required": list(props)}
         kept = []
         for s in stories:
@@ -118,7 +120,8 @@ class RecLlm(Llm):
             except (LlmError, KeyError, ValueError) as e:
                 r, st, score = {"error": str(e)}, {}, None
             self.calls.append({"name": "verify", "user": sub, "result": r, "stat": st,
-                               "span": [s["from"], s["to"]], "score": score, "escore": escore})
+                               "span": [s["from"], s["to"]], "score": score, "escore": escore,
+                               "broadcast": r.get("broadcast")})
             if score is None or score >= self.verify.get("min_score", 1):
                 kept.append(s)
         return {"stories": kept}
@@ -410,7 +413,7 @@ def run_set(set_dir: Path, llm0, mock: bool, drop: DropCounter, limit: int | Non
                  dur_s=(sents[-1]["endMs"] - sents[0]["startMs"]) / 1000 if sents else 0,
                  prompt_tok=sum(c["stat"].get("prompt_tokens") or 0 for c in llm.calls),
                  raw_detect=[c["result"] for c in llm.calls if c["name"] == "detect"],
-                 verify=[{"span": c["span"], "score": c["score"], "escore": c.get("escore"), "reason": c["result"].get("reason") or c["result"].get("error"),
+                 verify=[{"span": c["span"], "score": c["score"], "escore": c.get("escore"), "broadcast": c.get("broadcast"), "reason": c["result"].get("reason") or c["result"].get("error"),
                           "wall_s": c["stat"].get("wall_s"), "out_tok": c["stat"].get("completion_tokens")}
                          for c in llm.calls if c["name"] == "verify"],
                  # 호출별 토큰·시간. 젯슨은 출력 속도(약 11토큰/초)가 병목이라 어디서 출력을 쓰는지 본다

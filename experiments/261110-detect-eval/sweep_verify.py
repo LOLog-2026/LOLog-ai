@@ -18,12 +18,13 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
-def score_at(recs: list[dict], t: float, field: str = "score") -> dict:
+def score_at(recs: list[dict], t: float, field: str = "score", drop_bc: bool = False) -> dict:
     tp = fp = ngold = 0
     dur = 0.0
     for r in recs:
         sc = {tuple(v["span"]): v.get(field) for v in r.get("verify", [])}
-        keep = lambda span: (sc.get(tuple(span)) is None) or sc[tuple(span)] >= t
+        bc = {tuple(v["span"]): v.get("broadcast") for v in r.get("verify", [])}
+        keep = lambda span: ((sc.get(tuple(span)) is None) or sc[tuple(span)] >= t) and not (drop_bc and bc.get(tuple(span)))
         tp += sum(1 for p in r["pairs"] if keep(p["pred"]))
         fp += sum(1 for f in r["fp"] if keep(f["span"]))
         ngold += r["n_gold"]
@@ -47,6 +48,7 @@ def main() -> None:
     ap.add_argument("--tag", required=True)
     ap.add_argument("--out", default=str(HERE / "results"))
     ap.add_argument("--field", default="score", choices=["score", "escore"], help="escore = 점수 토큰 확률로 낸 기대 점수")
+    ap.add_argument("--drop-broadcast", action="store_true", help="확인 단계가 방송 소리(broadcast=true)라고 한 카드도 버림")
     ap.add_argument("--cuts", type=float, nargs="+", help="기준 점수 목록(기본 1~5)")
     args = ap.parse_args()
     d = Path(args.out) / args.tag
@@ -57,7 +59,7 @@ def main() -> None:
     for s in sets:
         runs = [json.load(open(f))["recs"] for f in sorted(glob.glob(str(d / f"{s}.run*.json")))]
         for t in (args.cuts or range(1, 6)):
-            res = [score_at(recs, t, args.field) for recs in runs]
+            res = [score_at(recs, t, args.field, args.drop_broadcast) for recs in runs]
             print(f"| {s} | {t} | {fmt([x['F1'] for x in res])} | {fmt([x['P'] for x in res])} | "
                   f"{fmt([x['R'] for x in res])} | {fmt([x['fp_per_h'] for x in res])} |")
     # 확인 단계 비용(3090): 호출 수와 출력 토큰
