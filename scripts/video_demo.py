@@ -40,7 +40,7 @@ def plan(a) -> None:
     for i, c in enumerate(sb["characters"]):  # 기본 화자가 붙어 있으면 그 목소리, 아니면 외모로 고른다
         ref = c.get("ref") or ""
         c["voice"] = ref.split(":", 1)[1] if ref.startswith("default:") and ref.split(":", 1)[1] in have \
-            else T.voice_for(c["appearance"], seed=i, available=have)
+            else T.voice_for(c["appearance"], seed=int(src["cardId"]) + i, available=have)
     voice = {c["key"]: c["voice"] for c in sb["characters"]}
     clips, sr = [], 24000
     for i, d in enumerate(all_lines(sb)):
@@ -75,11 +75,11 @@ def draw(a) -> None:
             d.text((40, 40), f"scene {s['index']}  {s['motion']} / {s['transition']}", fill="white")
             img.save(out / f"scene_{s['index']}.png")
         return
-    from lolog_ai.render import prompt
+    from lolog_ai.render import video_prompt
     from lolog_ai.worker import draw as D
 
     t0 = time.perf_counter()
-    embeds = D.encode([prompt(sb, s) for s in sb["scenes"]])
+    embeds = D.encode([video_prompt(sb, s) for s in sb["scenes"]])
     pipe = D._image_pipe()
     for i, s in enumerate(sb["scenes"]):
         D._render(pipe, embeds[i], a.seed + i).save(out / f"scene_{s['index']}.png")

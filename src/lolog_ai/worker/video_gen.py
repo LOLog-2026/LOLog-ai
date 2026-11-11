@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from ..video_storyboard import MAX_LINES, MAX_SCENES, MAX_TEXT, MIN_SCENES, MOTIONS, TRANSITIONS, validate
 from .llm import Llm
@@ -22,10 +23,17 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - 장면(scenes) {MIN_SCENES}~{MAX_SCENES}개. 상황 소개 → 전개 → 웃음 포인트 → 반응 순서로 이야기가 흐른다
 - 카드의 대사와 요약에 있는 일만 그린다. 없는 사건을 지어내지 않는다
 - 장면 하나는 그림 한 장이다. 장소나 행동, 표정이 바뀌면 장면을 나눈다
+- 대화는 보통 한 사람(teller)이 겪은 일을 다른 사람(listener)에게 들려주는 것이다
+- 장면마다 flashback을 정한다. true는 들려주는 일(그때 그 자리)을 그린 장면, false는 지금 대화하는 자리
+- flashback 장면에는 그 일을 겪은 화자만 cast에 넣는다. listener는 넣지 않는다. listener가 말하는 대사는 flashback이 아닌 장면에 둔다
+- 이야기에 나오지만 화자가 아닌 사람(기사님, 엄마, 선생님 등)은 cast에 넣지 않고 scene에 역할이 드러나게 쓴다("a bus driver in a uniform and cap")
+- 마지막 장면은 지금 대화하는 자리로 돌아와 듣는 사람의 반응을 그려도 된다
 
 인물(characters)
 - key는 카드의 화자 키(화자1, 화자2…) 그대로. 카드에 있는 화자만 쓴다
 - appearance는 그 이야기에 어울리는 외모를 영어로 짧게 정한다(성별, 나이대, 머리, 옷 색). 모든 장면에 그대로 들어간다
+- appearance는 지금 말하고 있는 그 화자 본인의 외모다. 이야기에 나오는 다른 사람(할머니, 엄마 등)의 외모를 화자에게 쓰지 않는다. 화자의 나이대는 말투로 정하고 모르면 20대로 한다
+- role은 teller(이야기를 들려주는 사람) 또는 listener(듣고 반응하는 사람)
 - 화자 목록에 "외모 정해짐"이 있는 화자는 그 외모를 그대로 appearance에 쓴다
 
 그림 설명(place.prompt, appearance, scene, expression)은 모두 영어
@@ -35,11 +43,11 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - 그림에 글자가 들어가지 않게 한다. 말한 내용, 간판·표지판의 글, 따옴표 안의 말을 scene에 쓰지 않는다
 
 장면의 인물(cast)
-- 한 장면에 1~3명. position은 left/center/right 중 하나이고 한 장면에서 겹치지 않는다
+- 한 장면에 1~3명(화자만). position은 left/center/right 중 하나이고 한 장면에서 겹치지 않는다
 
 대사(lines): 자막으로 뜨고 목소리로 읽힌다
 - 장면당 0~{MAX_LINES}개. speaker는 그 장면 cast에 있는 key
-- text는 한국어 {MAX_TEXT}자 이하(공백 포함). 원래 대사의 말투를 살려 줄인다. 카드의 대사 순서를 지킨다
+- text는 반드시 한국어로, 카드의 대사를 그대로 쓰거나 줄인다. 영어로 옮기지 않는다. {MAX_TEXT}자 이하(공백 포함). 원래 대사의 말투를 살려 줄인다. 카드의 대사 순서를 지킨다
 - 소리 내어 읽을 수 있게 쓴다. "ㅋㅋㅋ", "ㅠㅠ" 같은 낱자모와 이모티콘은 쓰지 않는다. 숫자는 "세 시", "오만 원"처럼 한글로 쓴다
 - 대화에 나온 실명과 주소는 빼거나 "친구", "우리 집"처럼 바꾼다
 - sourceLineIds는 근거가 된 카드 대사 id
@@ -65,6 +73,7 @@ def _schema(keys: list[str]) -> dict:
     scene = {
         "type": "object",
         "properties": {
+            "flashback": {"type": "boolean"},
             "scene": en,
             "cast": {"type": "array", "minItems": 1, "maxItems": 3, "items": {
                 "type": "object",
@@ -73,25 +82,37 @@ def _schema(keys: list[str]) -> dict:
                 "required": ["key", "position", "expression"]}},
             "lines": {"type": "array", "maxItems": MAX_LINES, "items": {
                 "type": "object",
-                "properties": {"speaker": key, "text": s,
+                "properties": {"speaker": key, "text": {"type": "string", "pattern": "^[^A-Za-z]+$"},
                                "sourceLineIds": {"type": "array", "items": {"type": "integer"}}},
                 "required": ["speaker", "text", "sourceLineIds"]}},
             "motion": {"type": "string", "enum": MOTIONS},
             "transition": {"type": "string", "enum": TRANSITIONS},
         },
-        "required": ["scene", "cast", "lines", "motion", "transition"],
+        "required": ["flashback", "scene", "cast", "lines", "motion", "transition"],
     }
     return {
         "type": "object",
         "properties": {
             "place": {"type": "object", "properties": {"text": s, "prompt": en}, "required": ["text", "prompt"]},
             "characters": {"type": "array", "minItems": 1, "maxItems": len(keys), "items": {
-                "type": "object", "properties": {"key": key, "appearance": en},
-                "required": ["key", "appearance"]}},
+                "type": "object", "properties": {"key": key, "appearance": en,
+                                                 "role": {"type": "string", "enum": ["teller", "listener"]}},
+                "required": ["key", "role", "appearance"]}},
             "scenes": {"type": "array", "minItems": MIN_SCENES, "maxItems": MAX_SCENES, "items": scene},
         },
         "required": ["place", "characters", "scenes"],
     }
+
+
+_QUOTED = re.compile(r"\s*(\"[^\"]*\"|“[^”]*”|‘[^’]*’|(?<![A-Za-z])'[^']*'(?![A-Za-z])|\([^)]*\))")
+
+
+def clean_scene(text: str) -> str:
+    """그림 설명에서 따옴표로 묶은 말과 괄호(이름)를 뺀다. 넣으면 그림에 글자·말풍선이 생긴다(#33).
+    LLM이 규칙을 자주 어겨서 다시 묻지 않고 코드가 지운다."""
+    out = _QUOTED.sub("", text)
+    out = re.sub(r"\b(says|saying|said|asks|asking|shouts|whispers)\s*[,:]?(?=\s|[.]|$)", "speaks", out)
+    return re.sub(r"\s+([,.])", r"\1", re.sub(r"\s{2,}", " ", out)).strip()
 
 
 def assemble(raw: dict, src: dict) -> dict:
@@ -103,13 +124,22 @@ def assemble(raw: dict, src: dict) -> dict:
     sb = {
         "version": 1, "videoId": src.get("videoId"), "cardId": src["cardId"],
         "place": place,
-        "characters": [_character(c, names, fixed) for c in raw["characters"]],
+        "characters": [{**_character(c, names, fixed), "role": c.get("role", "teller")} for c in raw["characters"]],
         "scenes": [],
     }
+    listeners = {c["key"] for c in raw["characters"] if c.get("role") == "listener"}
     for i, p in enumerate(raw["scenes"][:MAX_SCENES]):
         cast = [{k: v for k, v in c.items() if k != "expression" or v} for c in p["cast"]]
         lines = [{k: v for k, v in d.items() if k != "sourceLineIds" or v} for d in p["lines"]]
-        sb["scenes"].append({"index": i + 1, "scene": p["scene"], "cast": cast, "lines": lines,
+        flashback = bool(p.get("flashback"))
+        if flashback:  # 회상 장면 규칙은 LLM이 자주 어겨서 코드가 맞춘다(#33)
+            if any(d["speaker"] in listeners for d in lines):
+                flashback = False  # 듣는 사람이 말하는 장면은 지금 자리
+            else:
+                kept = [c for c in cast if c["key"] not in listeners]
+                cast = kept or cast
+        sb["scenes"].append({"index": i + 1, "flashback": flashback, "scene": clean_scene(p["scene"]),
+                             "cast": cast, "lines": lines,
                              "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"]})
     return sb
 

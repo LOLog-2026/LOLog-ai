@@ -45,6 +45,16 @@ def prompt(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = frozense
             f"{panel['scene']} {cast_text(sb, panel, with_ref)}.{keep} {NO_TEXT}")
 
 
+NO_SIGN_TEXT = ("One single full illustration, not divided into panels. "
+                "Any signs, screens and storefronts are plain without writing.")
+
+
+def video_prompt(sb: dict, scene: dict, with_ref: set[str] | frozenset[str] = frozenset()) -> str:
+    """영상 장면 하나(video_storyboard). 장면은 4컷의 panel과 같은 필드(scene, cast)를 쓴다.
+    영상은 그림이 커서 배경 간판의 가짜 글씨가 눈에 띄어 한 줄을 더한다(#33 첫 영상)."""
+    return prompt(sb, scene, with_ref).replace("A single comic panel. ", "").replace(NO_TEXT, f"{NO_SIGN_TEXT} {NO_TEXT}")
+
+
 def portrait_prompt(appearance: str, from_photo: bool = False) -> str:
     """기본 화자·프로필 캐릭터 그림. 프로필 캐릭터는 사진을 image 1로 넣고 그 사람을 이 화풍으로 다시 그린다."""
     look = f"the person from image 1 ({appearance})" if from_photo else appearance

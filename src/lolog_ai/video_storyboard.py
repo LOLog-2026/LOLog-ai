@@ -13,11 +13,15 @@ from __future__ import annotations
 
 from typing import Any
 
+import re
+
 from .storyboard import HANGUL_RE, INTERNAL_NAME_RE, KEY_RE
+
+QUOTE_RE = re.compile(r"[\"“”‘’()]|(?<![A-Za-z])'|'(?![A-Za-z])")  # 따옴표(말한 내용)·괄호(이름) → 그림에 글자가 생겼다(#33). man's 같은 소유격은 통과
 
 MIN_SCENES, MAX_SCENES = 4, 8
 MAX_LINES = 3        # 장면 하나의 대사 수
-MAX_TEXT = 30        # 자막 한 장의 글자 수(공백 포함). 720px 너비에 두 줄
+MAX_TEXT = 40        # 자막 한 장의 글자 수(공백 포함). 720px 너비에 46px 글씨로 세 줄(줄당 약 14자)
 MAX_CAST = 3
 MOTIONS = ["zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "shake", "still"]
 TRANSITIONS = ["cut", "fade", "slide_left", "slide_up", "zoom", "flash"]
@@ -60,11 +64,20 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
         if s.get("transition") not in TRANSITIONS:
             errs.append(f"{where}.transition은 {TRANSITIONS} 중 하나")
         errs += _check_prompt(f"{where}.scene", s.get("scene", ""), sb)
+        if QUOTE_RE.search(s.get("scene", "")):
+            errs.append(f"{where}.scene에 따옴표나 괄호가 있음 (그림에 글자·말풍선이 생김. 말한 내용은 쓰지 않는다)")
+        if s.get("flashback"):
+            listeners = {c.get("key") for c in chars if c.get("role") == "listener"}
+            for c in s.get("cast") or []:
+                if c.get("key") in listeners:
+                    errs.append(f"{where}는 flashback인데 듣는 사람 {c.get('key')}가 cast에 있음")
 
         cast = s.get("cast") or []
         cast_keys = [c.get("key") for c in cast]
         if not 1 <= len(cast) <= MAX_CAST:
             errs.append(f"{where}.cast는 1~{MAX_CAST}명")
+        if s.get("flashback") is None:
+            errs.append(f"{where}.flashback이 없음")
         for k in cast_keys:
             if k not in keys:
                 errs.append(f"{where}.cast에 없는 인물 {k!r}")
