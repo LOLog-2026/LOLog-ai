@@ -46,7 +46,7 @@ def prompt(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = frozense
 
 
 def portrait_prompt(appearance: str, from_photo: bool = False) -> str:
-    """기본 화자·친구 아바타 그림. 친구는 사진을 image 1로 넣고 그 사람을 이 화풍으로 다시 그린다."""
+    """기본 화자·프로필 캐릭터 그림. 프로필 캐릭터는 사진을 image 1로 넣고 그 사람을 이 화풍으로 다시 그린다."""
     look = f"the person from image 1 ({appearance})" if from_photo else appearance
     return f"{STYLE}. {PORTRAIT.format(look=look)} {NO_TEXT}"
 
