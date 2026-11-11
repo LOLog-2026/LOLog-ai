@@ -34,7 +34,8 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - 대화는 보통 한 사람(teller)이 겪은 일을 다른 사람(listener)에게 들려주는 것이다
 - 장면마다 flashback을 정한다. true는 들려주는 일(그때 그 자리)을 그린 장면, false는 지금 대화하는 자리
 - flashback 장면에는 그 일을 겪은 화자만 cast에 넣는다. listener는 넣지 않는다. listener가 말하는 대사는 flashback이 아닌 장면에 둔다
-- 이야기에 나오지만 화자가 아닌 사람(기사님, 엄마, 선생님 등)은 cast에 넣지 않고 scene에 역할이 드러나게 쓴다("a bus driver in a uniform and cap")
+- 이야기에 나오지만 화자가 아닌 사람(할머니, 엄마, 기사님, 선생님 등)은 extras에 한 번 정의하고(id는 영어 소문자, appearance는 영어 외모) 나오는 장면의 extras에 넣는다. 화자를 그 사람 대신 그리지 않는다
+- 그 일을 겪은 사람이 화자가 아니면(할머니 이야기 등) 그 회상 장면의 cast는 비워도 된다. 그때 대사는 화면 밖에서 들려주는 말(내레이션)이 된다
 - 마지막 장면은 지금 대화하는 자리로 돌아와 듣는 사람의 반응을 그려도 된다
 
 인물(characters)
@@ -50,12 +51,14 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - scene은 그 장면만 보고 그릴 수 있게 쓴다. "again", "the same" 같은 앞 장면에 기대는 말을 쓰지 않는다
 - 한글을 섞지 않는다
 - 그림에 글자가 들어가지 않게 한다. 말한 내용, 간판·표지판의 글, 따옴표 안의 말을 scene에 쓰지 않는다
+- 휴대폰·컴퓨터 화면 속 내용(채팅, 사진, 앱)을 그리지 않는다. 화면을 보는 사람의 표정과 행동을 그린다
 
 장면의 인물(cast)
-- 한 장면에 1~3명(화자만). position은 left/center/right 중 하나이고 한 장면에서 겹치지 않는다
+- cast는 화자만, 0~3명. extras와 합쳐 한 장면에 3명까지. position은 left/center/right 중 하나이고 cast와 extras를 합쳐 한 장면에서 겹치지 않는다
+- flashback이 아닌 장면은 화자가 한 명 이상 나온다
 
 대사(lines): 자막으로 뜨고 목소리로 읽힌다
-- 장면당 0~{MAX_LINES}개. speaker는 그 장면 cast에 있는 key
+- 장면당 0~{MAX_LINES}개. flashback이 아닌 장면에서는 speaker가 그 장면 cast에 있어야 한다. flashback 장면의 대사는 들려주는 사람의 목소리라 cast에 없어도 된다
 - text는 반드시 한국어로, 카드의 대사를 그대로 쓰거나 줄인다. 영어로 옮기지 않는다. {MAX_TEXT}자 이하(공백 포함). 원래 대사의 말투를 살려 줄인다. 카드의 대사 순서를 지킨다
 - 소리 내어 읽을 수 있게 쓴다. "ㅋㅋㅋ", "ㅠㅠ" 같은 낱자모와 이모티콘은 쓰지 않는다. 숫자는 "세 시", "오만 원"처럼 한글로 쓴다
 - 대화에 나온 실명과 주소는 빼거나 "친구", "우리 집"처럼 바꾼다
@@ -84,7 +87,12 @@ def _schema(keys: list[str]) -> dict:
         "properties": {
             "flashback": {"type": "boolean"},
             "scene": en,
-            "cast": {"type": "array", "minItems": 1, "maxItems": 3, "items": {
+            "extras": {"type": "array", "maxItems": 2, "items": {
+                "type": "object", "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+                                                 "position": {"type": "string", "enum": ["left", "center", "right"]},
+                                                 "expression": en},
+                "required": ["id", "position", "expression"]}},
+            "cast": {"type": "array", "minItems": 0, "maxItems": 3, "items": {
                 "type": "object",
                 "properties": {"key": key, "position": {"type": "string", "enum": ["left", "center", "right"]},
                                "expression": en},
@@ -97,7 +105,7 @@ def _schema(keys: list[str]) -> dict:
             "motion": {"type": "string", "enum": MOTIONS},
             "transition": {"type": "string", "enum": TRANSITIONS},
         },
-        "required": ["flashback", "scene", "cast", "lines", "motion", "transition"],
+        "required": ["flashback", "scene", "cast", "extras", "lines", "motion", "transition"],
     }
     return {
         "type": "object",
@@ -109,9 +117,13 @@ def _schema(keys: list[str]) -> dict:
                                                  "gender": {"type": "string", "enum": ["f", "m"]},
                                                  "age": {"type": "string", "enum": ["kid", "young", "middle"]}},
                 "required": ["key", "role", "gender", "age", "appearance"]}},
+            "extras": {"type": "array", "maxItems": 3, "items": {
+                "type": "object", "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+                                                 "appearance": en},
+                "required": ["id", "appearance"]}},
             "scenes": {"type": "array", "minItems": MIN_SCENES, "maxItems": MAX_SCENES, "items": scene},
         },
-        "required": ["place", "characters", "scenes"],
+        "required": ["place", "characters", "extras", "scenes"],
     }
 
 
@@ -126,6 +138,45 @@ def clean_scene(text: str) -> str:
     return re.sub(r"\s+([,.])", r"\1", re.sub(r"\s{2,}", " ", out)).strip()
 
 
+def _extras(p: dict, defined: list[dict], cast: list[dict]) -> list[dict]:
+    """장면의 extras에서 정의되지 않은 id와 자리가 겹치는 사람을 뺀다(한 장면 3명까지)."""
+    ids = {e["id"] for e in defined}
+    taken = {c["position"] for c in cast}
+    out = []
+    for e in p.get("extras") or []:
+        if e.get("id") in ids and e.get("position") not in taken and len(cast) + len(out) < 3:
+            taken.add(e["position"])
+            out.append({k: v for k, v in e.items() if k != "expression" or v})
+    return out
+
+
+def _head(appearance: str) -> str:
+    """외모 글의 첫 덩이에서 사람을 가리키는 말. "an old woman, white hair, ..." → "old woman" """
+    first = re.split(r"[,(]| with | wearing ", appearance.lower())[0]
+    words = [w for w in re.findall(r"[a-z]+(?:-[a-z]+)*", first) if w not in ("a", "an", "the", "in", "her", "his", "s")
+             and not w.isdigit()]
+    return " ".join(words[-2:])
+
+
+def _fix_flashback(scene: dict, sb: dict) -> None:
+    """회상 장면에서 LLM이 이야기 속 인물(extras)을 scene 글에만 쓰고 extras에 넣지 않으면, 화자가 그 사람 대신
+    그려진다(#33 할머니 이야기). scene 글에 extras의 외모 머리말("old woman")이 있으면 언급 안 된 화자를 빼고
+    그 인물을 넣는다. 역할 id("driver")로만 나오면 화자는 두고 그 인물만 더한다."""
+    text = scene["scene"].lower()
+    looks = {c["key"]: _head(c["appearance"]) for c in sb["characters"]}
+    for e in sb["extras"]:
+        head = _head(e["appearance"])
+        named = re.search(rf"\b{re.escape(e['id'].replace('_', ' '))}\b", text)  # id가 "driver"처럼 역할이면
+        if not ((head and head in text) or named) or any(x["id"] == e["id"] for x in scene["extras"]):
+            continue
+        if head and head in text:  # 그 사람의 외모("old woman")로 부르면 이 장면의 주인공. 언급 안 된 화자는 뺀다
+            scene["cast"] = [c for c in scene["cast"] if looks.get(c["key"]) and looks[c["key"]] in text]
+        taken = {c["position"] for c in scene["cast"]} | {x["position"] for x in scene["extras"]}
+        free = [p for p in ("center", "left", "right") if p not in taken]
+        if free and len(scene["cast"]) + len(scene["extras"]) < 3:
+            scene["extras"].append({"id": e["id"], "position": free[0]})
+
+
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -137,6 +188,7 @@ def assemble(raw: dict, src: dict) -> dict:
         "place": place,
         "characters": [{**_character(c, names, fixed), "role": c.get("role", "teller"),
                         "gender": c.get("gender"), "age": c.get("age")} for c in raw["characters"]],
+        "extras": [{"id": e["id"], "appearance": e["appearance"]} for e in raw.get("extras") or []],
         "scenes": [],
     }
     listeners = {c["key"] for c in raw["characters"] if c.get("role") == "listener"}
@@ -148,11 +200,13 @@ def assemble(raw: dict, src: dict) -> dict:
             if any(d["speaker"] in listeners for d in lines):
                 flashback = False  # 듣는 사람이 말하는 장면은 지금 자리
             else:
-                kept = [c for c in cast if c["key"] not in listeners]
-                cast = kept or cast
+                cast = [c for c in cast if c["key"] not in listeners]
         sb["scenes"].append({"index": i + 1, "flashback": flashback, "scene": clean_scene(p["scene"]),
-                             "cast": cast, "lines": lines,
+                             "cast": cast, "extras": _extras(p, sb["extras"], cast), "lines": lines,
                              "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"]})
+    for sc in sb["scenes"]:
+        if sc["flashback"]:
+            _fix_flashback(sc, sb)
     return sb
 
 

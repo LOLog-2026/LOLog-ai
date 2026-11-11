@@ -45,14 +45,27 @@ def prompt(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = frozense
             f"{panel['scene']} {cast_text(sb, panel, with_ref)}.{keep} {NO_TEXT}")
 
 
-NO_SIGN_TEXT = ("One single full illustration, not divided into panels. "
-                "Any signs, screens and storefronts are plain without writing.")
+# 영상 장면(#33): STYLE의 "comic"이 있으면 한 장을 두 칸으로 나눠 그리는 일이 있어 화풍 문장을 따로 둔다
+VIDEO_STYLE = ("Korean webtoon style illustration, clean black line art, flat pastel colors, "
+               "simple and cute characters")
+NO_SIGN_TEXT = ("One single full-frame illustration, not divided into panels, no borders. "
+                "Any signs and storefronts are plain without writing. "
+                "Phone and computer screens are blank or show only soft color.")
 
 
 def video_prompt(sb: dict, scene: dict, with_ref: set[str] | frozenset[str] = frozenset()) -> str:
-    """영상 장면 하나(video_storyboard). 장면은 4컷의 panel과 같은 필드(scene, cast)를 쓴다.
-    영상은 그림이 커서 배경 간판의 가짜 글씨가 눈에 띄어 한 줄을 더한다(#33 첫 영상)."""
-    return prompt(sb, scene, with_ref).replace("A single comic panel. ", "").replace(NO_TEXT, f"{NO_SIGN_TEXT} {NO_TEXT}")
+    """영상 장면 하나(video_storyboard). 화자(cast)에 더해 화자가 아닌 이야기 속 인물(extras)도 넣는다."""
+    parts = []
+    if scene.get("cast"):
+        parts.append(cast_text(sb, scene, with_ref).removeprefix("Characters "))
+    look = {e["id"]: e["appearance"] for e in sb.get("extras") or []}
+    for e in scene.get("extras") or []:
+        expr = f", {e['expression']}" if e.get("expression") else ""
+        parts.append(f"{WHERE[e['position']]}: {look[e['id']]}{expr}")
+    who = f" Characters {'; '.join(parts)}." if parts else " No people in this scene."
+    keep = f" {KEEP_REF}" if ref_keys(scene, with_ref) else ""
+    return (f"{VIDEO_STYLE}. Setting: {sb['place']['prompt']}. {scene['scene']}{who}{keep} "
+            f"{NO_SIGN_TEXT} {NO_TEXT}")
 
 
 def portrait_prompt(appearance: str, from_photo: bool = False) -> str:

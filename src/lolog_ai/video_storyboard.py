@@ -48,6 +48,8 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
         if not KEY_RE.match(str(c.get("key", ""))):
             errs.append(f"character key 형식 오류: {c.get('key')!r}")
         errs += _check_prompt(f"characters[{c.get('key')}].appearance", c.get("appearance", ""), sb)
+    for e in sb.get("extras") or []:
+        errs += _check_prompt(f"extras[{e.get('id')}].appearance", e.get("appearance", ""), sb)
     errs += _check_prompt("place.prompt", (sb.get("place") or {}).get("prompt", ""), sb)
 
     scenes = sb.get("scenes") or []
@@ -62,6 +64,8 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             errs.append(f"{where}.motion은 {MOTIONS} 중 하나")
         if s.get("transition") not in TRANSITIONS:
             errs.append(f"{where}.transition은 {TRANSITIONS} 중 하나")
+        for e in s.get("extras") or []:
+            errs += _check_prompt(f"{where}.extras[{e.get('id')}].expression", e.get("expression") or "-", sb)
         errs += _check_prompt(f"{where}.scene", s.get("scene", ""), sb)
         if QUOTE_RE.search(s.get("scene", "")):
             errs.append(f"{where}.scene에 따옴표나 괄호가 있음 (그림에 글자·말풍선이 생김. 말한 내용은 쓰지 않는다)")
@@ -73,14 +77,21 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
 
         cast = s.get("cast") or []
         cast_keys = [c.get("key") for c in cast]
-        if not 1 <= len(cast) <= MAX_CAST:
-            errs.append(f"{where}.cast는 1~{MAX_CAST}명")
+        extras = s.get("extras") or []
+        if len(cast) + len(extras) > MAX_CAST:
+            errs.append(f"{where}: cast와 extras를 합쳐 {MAX_CAST}명까지")
+        if not s.get("flashback") and not cast:
+            errs.append(f"{where}는 지금 대화하는 장면인데 화자가 없음")
+        extra_ids = {e.get("id") for e in sb.get("extras") or []}
+        for e in extras:
+            if e.get("id") not in extra_ids:
+                errs.append(f"{where}.extras에 정의 안 된 인물 {e.get('id')!r}")
         if s.get("flashback") is None:
             errs.append(f"{where}.flashback이 없음")
         for k in cast_keys:
             if k not in keys:
                 errs.append(f"{where}.cast에 없는 인물 {k!r}")
-        positions = [c.get("position") for c in cast]
+        positions = [c.get("position") for c in cast + extras]
         if len(set(positions)) != len(positions):
             errs.append(f"{where}.cast의 position이 겹침")
 
@@ -90,7 +101,8 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             errs.append(f"{where}.lines는 최대 {MAX_LINES}개 (장면을 나눈다)")
         for j, d in enumerate(lines):
             text = d.get("text", "")
-            if d.get("speaker") not in cast_keys:
+            # 회상 장면의 대사는 들려주는 사람이 화면 밖에서 하는 말이라 cast에 없어도 된다
+            if d.get("speaker") not in (keys if s.get("flashback") else cast_keys):
                 errs.append(f"{where}.lines[{j}] 화자 {d.get('speaker')!r}가 이 장면 cast에 없음")
             if not text.strip():
                 errs.append(f"{where}.lines[{j}] 대사가 비어 있음")
