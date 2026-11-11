@@ -3,7 +3,7 @@
 - 날짜: 2026-11-10 ~
 - 담당: 민주
 - 이슈: #20
-- 브랜치: `claude/project-thread-3peq77`
+- 브랜치: `feature/20-detect-eval`
 - 대상 코드: `src/lolog_ai/worker/detect.py` (이야기 찾기 + 화자 나누기), LLM은 젯슨 1호 llama-server
 
 ## 목적
@@ -69,7 +69,7 @@ LLM은 같은 입력에도 흔들리므로 설정마다 3번 돌려 평균(최�
 ```bash
 # 0) 코드 받기 (서비스용 /opt/lolog/LOLog-ai는 건드리지 않는다)
 cd ~ && git clone https://github.com/LOLog-2026/LOLog-ai LOLog-ai-eval 2>/dev/null; cd ~/LOLog-ai-eval
-git fetch origin && git checkout claude/project-thread-3peq77 && git pull
+git fetch origin && git checkout feature/20-detect-eval && git pull
 cd experiments/261110-detect-eval
 
 # 1) 평가셋 만들기 (몇 초)
