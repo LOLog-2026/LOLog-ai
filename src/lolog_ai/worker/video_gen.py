@@ -52,6 +52,8 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - 한글을 섞지 않는다
 - 그림에 글자가 들어가지 않게 한다. 말한 내용, 간판·표지판의 글, 따옴표 안의 말을 scene에 쓰지 않는다
 - 휴대폰·컴퓨터 화면 속 내용(채팅, 사진, 앱)을 그리지 않는다. 화면을 보는 사람의 표정과 행동을 그린다
+- scene에는 그 장면 cast와 extras에 있는 사람만 쓴다. 화자를 부를 때는 그 화자의 appearance와 같은 성별 말(the man, the woman)을 쓴다. 다른 사람(학생, 아이, 손님)이 필요하면 extras에 정의해 넣는다. 여러 사람이 배경에 필요하면 "a crowd"처럼만 쓴다
+- extras는 사람이나 동물만. 물건(키오스크, 상자)은 scene에 쓴다
 
 장면의 인물(cast)
 - cast는 화자만, 0~3명. extras와 합쳐 한 장면에 3명까지. position은 left/center/right 중 하나이고 cast와 extras를 합쳐 한 장면에서 겹치지 않는다
@@ -134,9 +136,29 @@ def clean_scene(text: str) -> str:
     """그림 설명에서 따옴표로 묶은 말과 괄호(이름)를 뺀다. 넣으면 그림에 글자·말풍선이 생긴다(#33).
     LLM이 규칙을 자주 어겨서 다시 묻지 않고 코드가 지운다."""
     out = _QUOTED.sub("", text)
-    out = re.sub(r"(,\s*|\band\s+|\bwith\s+)?(a\s+)?(bright\s+|colorful\s+)?(neon\s+)?(signs?|signboards?|banners?|"
-                 r"posters?|menus? boards?)\b", "", out, flags=re.IGNORECASE)  # 간판·현수막은 글씨가 그려진다
-    out = re.sub(r"\b(says|saying|said|asks|asking|shouts|whispers)\s*[,:]?(?=\s|[.]|$)", "speaks", out)
+    out = re.sub(r"(,\s*|\band\s+|\bwith\s+)?(a\s+)?(bright\s+|colorful\s+|large\s+|small\s+)?(neon\s+)?"
+                 r"(signs?|signboards?|banners?|posters?|menus?|menu\s+boards?|white\s*boards?|black\s*boards?|"
+                 r"chalk\s*boards?|bulletin\s+boards?|notice\s+boards?|calendars?)\b"
+                 r"(\s+(filled|covered)\s+with\s+\w+(\s+\w+)?)?", "", out, flags=re.IGNORECASE)
+    # 문자·메시지·채팅 화면을 그리라고 하면 말풍선과 가짜 글씨가 생겼다(#33 3차 s31 3장)
+    out = re.sub(r"(,\s*|\s+)?(showing|shows|with|displaying)?\s*(an?\s+|the\s+)?(text\s+)?(messages?|chat|"
+                 r"notifications?)(\s+(screen|window|app|bubble)s?)?\b[^,.]*", "", out, flags=re.IGNORECASE)
+    # 글자를 그리라는 말(쪽지·문자·번호판, #33 2차 B1 실패 8장)과 말하는 동사(말풍선을 부름)를 지운다
+    out = re.sub(r"(,\s*|\s+)?(with\s+)?(something\s+|words\s+|text\s+)?written\b[^,.]*", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"(,\s*|\s+)?(that|which)\s+(reads|says)\b[^,.]*", "", out, flags=re.IGNORECASE)
+    out = re.sub(r"(,\s*|\s+)?the\s+(text|message|note|sign|numbers?|screen)\s+(reads|says|shows|is|are)\b[^.]*",
+                 "", out, flags=re.IGNORECASE)
+    out = re.sub(r"(,\s*|\s+)?(and\s+)?\b(says|saying|said|asks|asking|shouts|whispers|speaks|speaking)\b"
+                 r"(\s+(something|softly|quietly|loudly|clearly|to\s+\w+(\s+\w+)?))*", "", out, flags=re.IGNORECASE)
+    # 한 장면에 시간·장소가 둘이면 칸이 나뉘어 그려졌다(B2). 문장마다 "then" 앞만 남기고 장면이 바뀌는 문장은 뺀다
+    sentences = [t.strip() for t in re.split(r"(?<=[.!?])\s+", out) if t.strip()]
+    kept = []
+    for t in sentences:
+        if re.match(r"(the\s+scene\s+(shifts|changes|cuts)|later|meanwhile|afterwards)\b", t, flags=re.IGNORECASE):
+            continue
+        t = re.split(r",?\s+(and\s+)?then\b", t, maxsplit=1, flags=re.IGNORECASE)[0].rstrip(" ,.") + "."
+        kept.append(t)
+    out = " ".join(kept) if kept else out
     return re.sub(r"\s+([,.])", r"\1", re.sub(r"\s{2,}", " ", out)).strip()
 
 
@@ -160,7 +182,7 @@ def _head(appearance: str) -> str:
     return " ".join(words[-2:])
 
 
-def _fix_flashback(scene: dict, sb: dict) -> None:
+def _fix_flashback(scene: dict, sb: dict, drop_cast: bool = True) -> None:
     """회상 장면에서 LLM이 이야기 속 인물(extras)을 scene 글에만 쓰고 extras에 넣지 않으면, 화자가 그 사람 대신
     그려진다(#33 할머니 이야기). scene 글에 extras의 외모 머리말("old woman")이 있으면 언급 안 된 화자를 빼고
     그 인물을 넣는다. 역할 id("driver")로만 나오면 화자는 두고 그 인물만 더한다."""
@@ -171,7 +193,7 @@ def _fix_flashback(scene: dict, sb: dict) -> None:
         named = re.search(rf"\b{re.escape(e['id'].replace('_', ' '))}\b", text)  # id가 "driver"처럼 역할이면
         if not ((head and head in text) or named) or any(x["id"] == e["id"] for x in scene["extras"]):
             continue
-        if head and head in text:  # 그 사람의 외모("old woman")로 부르면 이 장면의 주인공. 언급 안 된 화자는 뺀다
+        if drop_cast and head and head in text:  # 그 사람의 외모("old woman")로 부르면 이 장면의 주인공. 언급 안 된 화자는 뺀다
             scene["cast"] = [c for c in scene["cast"] if looks.get(c["key"]) and looks[c["key"]] in text]
         taken = {c["position"] for c in scene["cast"]} | {x["position"] for x in scene["extras"]}
         free = [p for p in ("center", "left", "right") if p not in taken]
@@ -271,8 +293,9 @@ def assemble(raw: dict, src: dict) -> dict:
         if not c.get("ref"):  # 고른 그림의 외모 글은 그대로 둔다
             c["appearance"] = fix_appearance(c, i)
     for sc in sb["scenes"]:
-        if sc["flashback"]:
-            _fix_flashback(sc, sb)
+        # 회상이 아닌 장면도 이야기 속 인물이 장면 글에만 있으면 넣는다(#33 2차 B3: 할아버지·할머니가 빠진 7장).
+        # 화자를 빼는 것은 회상 장면에서만
+        _fix_flashback(sc, sb, drop_cast=sc["flashback"])
         fix_scene(sc, MAX_TEXT, MAX_LINES)
     sb["place"]["prompt"] = clean_scene(sb["place"]["prompt"])
     return sb

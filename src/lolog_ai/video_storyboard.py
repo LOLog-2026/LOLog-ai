@@ -67,6 +67,7 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
         for e in s.get("extras") or []:
             errs += _check_prompt(f"{where}.extras[{e.get('id')}].expression", e.get("expression") or "-", sb)
         errs += _check_prompt(f"{where}.scene", s.get("scene", ""), sb)
+        errs += _check_gender(where, s, chars, sb.get("extras") or [])
         if QUOTE_RE.search(s.get("scene", "")):
             errs.append(f"{where}.scene에 따옴표나 괄호가 있음 (그림에 글자·말풍선이 생김. 말한 내용은 쓰지 않는다)")
         if s.get("flashback"):
@@ -119,6 +120,45 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             if k not in card_keys:
                 errs.append(f"카드에 없는 화자 key {k!r}")
     return errs
+
+
+_FEMALE = re.compile(r"\b(female|woman|women|girl|lady|grandma|grandmother|mother|mom|she|her)\b", re.IGNORECASE)
+_MALE = re.compile(r"\b(male|man|men|boy|guy|grandpa|grandfather|father|dad|he|his|him)\b", re.IGNORECASE)
+
+
+def _gender_of(text: str) -> set[str]:
+    out = set()
+    if _FEMALE.search(text):
+        out.add("f")
+    if _MALE.search(text):
+        out.add("m")
+    return out
+
+
+def _check_gender(where: str, s: dict, chars: list[dict], extras: list[dict]) -> list[str]:
+    """장면 글이 그 장면 사람에 없는 성별을 부르면 그림에 없는 사람이 생겼다(#33 3차: 두 화자 모두 남자인데
+    "the woman"이라 써서 여자가 그려짐 4장). 군중(crowd 등)을 쓴 장면은 보지 않는다."""
+    text = s.get("scene", "")
+    if CROWD_RE.search(text):
+        return []
+    looks = {c.get("key"): c.get("appearance", "") for c in chars}
+    ex = {e.get("id"): e.get("appearance", "") for e in extras}
+    have = set()
+    for c in s.get("cast") or []:
+        have |= _gender_of(looks.get(c.get("key"), ""))
+    for e in s.get("extras") or []:
+        have |= _gender_of(ex.get(e.get("id"), "")) or {"f", "m"}  # 동물·성별 모르는 인물
+    want = _gender_of(re.sub(r"\b(his|her|him|he|she)\b", "", text, flags=re.IGNORECASE))
+    missing = want - have
+    if not missing:
+        return []
+    word = {"f": "여자", "m": "남자"}
+    return [f"{where}.scene이 {'·'.join(word[g] for g in sorted(missing))}를 부르는데 이 장면 cast·extras에 없음 "
+            "(화자는 appearance와 같은 성별로 부르고, 다른 사람은 extras에 넣는다)"]
+
+
+CROWD_RE = re.compile(r"\b(crowd|students|people|group|coworkers|classmates|audience|passengers|customers|graduates)\b",
+                      re.IGNORECASE)
 
 
 def _check_prompt(where: str, text: str, sb: dict[str, Any]) -> list[str]:

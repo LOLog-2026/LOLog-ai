@@ -1,0 +1,657 @@
+{
+ "checker": "Claude (민주 확인 전)",
+ "date": "2026-11-12",
+ "source": "/workspace/video-demo/batch3 check_0~3.png",
+ "videos": {
+  "s02": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "4명. 장면 글에 없는 '여자'(두 화자 모두 남자)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "3명. 장면 글의 '여자'"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "개 두 마리"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 남자 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s14": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 남자 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '파란 숄 여자'가 extras에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": false,
+     "B6": null,
+     "note": "장면 글은 여자가 우는데 화자 남자가 욺"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '파란 숄 여자'"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s17": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s31": {
+   "B4": true,
+   "B7": false,
+   "B7_note": "여전히 안경. 참조 유지 문장(KEEP_REF)에 'glasses'가 들어 있음",
+   "scenes": [
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "빈 말풍선(장면 글: text message screen)"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "말풍선 가짜 글씨(text message appears)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "말풍선 가짜 글씨(A text message reads in bold)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s46": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "벽 화이트보드에 가짜 글씨"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "화이트보드"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "화이트보드"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "화이트보드, 빨간 후드 남자 둘"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "화이트보드"
+    }
+   ]
+  },
+  "s48": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "정장 남자 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s49": {
+   "B4": false,
+   "B7": null,
+   "B4_note": "화자1 윗옷이 장면마다 다름(회색·하늘·흰·민트)",
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "4명. 장면 글의 '여자'(두 화자 모두 남자)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "장면 글의 '노란 원피스 아이'가 extras에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 남자 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "같은 남자 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s52": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "회색 후드 남자 둘"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": false,
+     "B6": null,
+     "note": "장면 글은 할아버지인데 화자가 그려짐"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s58": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s71": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '빨간 교복 학생'이 extras에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "남자 둘(콘티 한 명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "남자 둘(콘티 한 명)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s80": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "사람 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '파란 셔츠 소년'(화자1)이 cast에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글의 '분홍 원피스 여자'가 extras에 없음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s89": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "엘리베이터 안에 아이 한 명 더"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  }
+ }
+}
