@@ -4,7 +4,10 @@
 # 도중에 바뀐 코드로 돌아 버려졌다)
 cd /workspace/ai-video
 CH=/tmp/claude-1001/-workspace-ai/f41d7271-15e2-428d-a388-267ae3505b78/scratchpad/docs/assets/default-characters
-B=${B:-/workspace/video-demo/batch}; mkdir -p $B; : > $B/batch.jsonl
+B=${B:-/workspace/video-demo/batch}
+# 같은 결과 폴더로 두 번 돌면 GPU를 나눠 쓰다 메모리 부족으로 실패했다(5차 첫 시도). 잠금으로 막는다
+exec 9>"$B.lock"; flock -n 9 || { echo "이미 돌고 있어요: $B"; exit 1; }
+mkdir -p $B; : > $B/batch.jsonl
 rm -rf $B/src && cp -r src $B/src && git rev-parse --short HEAD > $B/COMMIT && git diff --quiet || echo dirty >> $B/COMMIT
 export PYTHONPATH=$B/src
 for f in ${CARDS:-/workspace/video-demo}/batch_card_*.json; do
