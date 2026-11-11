@@ -115,6 +115,8 @@ SPEAKER_COMPACT = """다음은 대화 녹음을 글로 바꾼 기록 중 한 이
 - 한두 글자뿐인 잡음 줄은 뺀다"""
 
 VARIANTS.update({
+    # 내용은 지금과 같고(대사 다시 씀) JSON만 문법으로 공백 없이. 품질은 그대로, 토큰만 줄이는 게 목표
+    "spk-json": {"speaker": {"system": None, "mode": "json"}},
     "spk-notext": {"speaker": {"system": SPEAKER_COMPACT, "mode": "notext"}},
     "spk-pairs": {"speaker": {"system": SPEAKER_COMPACT + "\n\n출력은 [[줄 번호, 화자 번호], ...] 모양의 JSON 배열 하나다. 예: [[12,1],[13,2],[14,1]]",
                               "mode": "pairs"}},

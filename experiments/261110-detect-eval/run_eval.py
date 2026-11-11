@@ -125,15 +125,24 @@ class RecLlm(Llm):
 
     PAIRS_GRAMMAR = 'root ::= "[" pair ("," pair)* "]"\npair ::= "[" [0-9]+ "," [1-4] "]"\n'
 
+    LINES_GRAMMAR = r'''root ::= "{\"lines\":[" line ("," line)* "]}"
+line ::= "{\"seg\":" [0-9]+ ",\"speaker\":" spk ",\"text\":" str "}"
+spk ::= "\"화자1\"" | "\"화자2\"" | "\"화자3\"" | "\"화자4\""
+str ::= "\"" ( [^"\\\x7F\x00-\x1F] | "\\" ["\\/bfnrt] )* "\""
+'''
+
     def _speakers_compact(self, user, max_tokens):
         """화자 나누기 출력 줄이기 실험: 줄 번호와 화자만 받고 대사는 입력 글을 그대로 쓴다.
         notext = 지금 스키마에서 text만 뺌. pairs = [[줄 번호, 화자 번호], ...]를 문법으로 공백 없이 강제."""
         text_of = {int(l.split("]")[0][1:]): l.split("] ", 1)[1] if "] " in l else "" for l in user.split("\n")}
         mode = self.speaker["mode"]
         body = {"model": self.model, "temperature": self.temperature, "max_tokens": max_tokens,
-                "messages": [{"role": "system", "content": self.speaker["system"]}, {"role": "user", "content": user}]}
+                "messages": [{"role": "system", "content": self.speaker["system"] or det.SPEAKER_SYSTEM},
+                             {"role": "user", "content": user}]}
         if mode == "pairs":
             body["grammar"] = self.PAIRS_GRAMMAR
+        elif mode == "json":  # 지금 출력과 같은 내용(대사 포함)을 공백 없는 JSON으로만 강제
+            body["grammar"] = self.LINES_GRAMMAR
         else:
             body["response_format"] = {"type": "json_schema", "json_schema": {"name": "speakers", "schema": {
                 "type": "object", "required": ["lines"], "properties": {"lines": {"type": "array", "minItems": 1, "items": {
@@ -150,8 +159,11 @@ class RecLlm(Llm):
             raw = json.loads(ch["message"]["content"])
         except json.JSONDecodeError as e:
             raise LlmError(f"JSON 파싱 실패: {e}") from None
-        pairs = [(a, f"화자{b}") for a, b in raw] if mode == "pairs" else [(l["seg"], l["speaker"]) for l in raw.get("lines", [])]
-        res = {"lines": [{"seg": a, "speaker": sp, "text": text_of[a]} for a, sp in pairs if text_of.get(a)]}
+        if mode == "json":
+            res = {"lines": raw.get("lines", [])}
+        else:
+            pairs = [(a, f"화자{b}") for a, b in raw] if mode == "pairs" else [(l["seg"], l["speaker"]) for l in raw.get("lines", [])]
+            res = {"lines": [{"seg": a, "speaker": sp, "text": text_of[a]} for a, sp in pairs if text_of.get(a)]}
         self.calls.append({"name": "speakers", "user": user, "result": res, "stat": stat})
         return res, stat
 
