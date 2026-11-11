@@ -2,7 +2,7 @@
 kid-f-01 0
 kid-f-02 0
 kid-f-03 0
-kid-f-04 0
+kid-f-04 1
 kid-m-01 0
 kid-m-02 0
 kid-m-03 0
@@ -13,7 +13,7 @@ young-f-03 0
 young-f-04 0
 young-m-01 0
 young-m-02 0
-young-m-03 1
+young-m-03 2
 young-m-04 1
 middle-f-01 0
 middle-f-02 0

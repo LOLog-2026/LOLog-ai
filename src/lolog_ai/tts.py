@@ -76,8 +76,10 @@ def _local(model_id: str) -> str:
 
 class Tts:
     def __init__(self, voices_dir: str | Path, model: str = MODEL, device: str | None = None,
-                 xvec_only: bool = False):
-        """xvec_only: 참조 음성의 화자 벡터만 쓴다(참조 음성의 내용·말투는 넘기지 않음)."""
+                 xvec_only: bool = False, gen_kwargs: dict | None = None):
+        """xvec_only: 참조 음성의 화자 벡터만 쓴다(참조 음성의 내용·말투는 넘기지 않음).
+        gen_kwargs: 생성 옵션(temperature, top_k 등). 없으면 모델 기본값(temperature 0.9)."""
+        self.gen_kwargs = gen_kwargs or {}
         self.xvec_only = xvec_only
         self.last_tries = 0
         self.voices_dir = Path(voices_dir)
@@ -135,7 +137,8 @@ class Tts:
         for k in range(tries):
             torch.manual_seed(seed + k)
             wavs, sr = model.generate_voice_clone(text=text, language="Korean", voice_clone_prompt=prompt,
-                                                  max_new_tokens=int(limit * 1.5 * TOKENS_PER_SECOND))
+                                                  max_new_tokens=int(limit * 1.5 * TOKENS_PER_SECOND),
+                                                  **self.gen_kwargs)
             wav = wavs[0]
             self.last_tries = k + 1
             if best is None or len(wav) < len(best[0]):
