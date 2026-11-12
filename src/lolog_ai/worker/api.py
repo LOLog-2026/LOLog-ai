@@ -61,6 +61,43 @@ class InternalApi:
         ).encode() + png + f"\r\n--{boundary}--\r\n".encode()
         self._send("POST", path, body, f"multipart/form-data; boundary={boundary}")
 
+    def _post_files(self, path: str, files: list[tuple[str, str, str, bytes]],
+                    fields: dict[str, str] | None = None) -> None:
+        """multipart. files: (파트 이름, 파일 이름, Content-Type, 바이트)"""
+        boundary = uuid.uuid4().hex
+        parts = [f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
+                 for k, v in (fields or {}).items()]
+        for name, filename, ctype, data in files:
+            parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"; filename=\"{filename}\"\r\n"
+                         f"Content-Type: {ctype}\r\n\r\n".encode() + data + b"\r\n")
+        self._send("POST", path, b"".join(parts) + f"--{boundary}--\r\n".encode(),
+                   f"multipart/form-data; boundary={boundary}")
+
+    # ---------- 카드 영상 (LOLog-docs spec/video.md 3장) ----------
+
+    def get_video_source(self, video_id: int) -> dict:
+        """3호. 부르면 영상이 VOICE가 된다. 없거나 끝났으면 404 VIDEO_NOT_FOUND."""
+        return self._json("GET", f"/internal/videos/{video_id}/source")
+
+    def post_video_storyboard(self, video_id: int, storyboard: dict) -> None:
+        self._json("POST", f"/internal/videos/{video_id}/storyboard", storyboard)
+
+    def post_video_audio(self, video_id: int, wav: bytes) -> None:
+        """3호. 받으면 DRAWING이 되고 백엔드가 2호 큐(lolog:comic, kind video)에 넣는다."""
+        self._post_files(f"/internal/videos/{video_id}/audio", [("file", "audio.wav", "audio/wav", wav)])
+
+    def get_video_storyboard(self, video_id: int) -> dict:
+        return self._json("GET", f"/internal/videos/{video_id}/storyboard")
+
+    def get_video_audio(self, video_id: int) -> bytes:
+        return self._send("GET", f"/internal/videos/{video_id}/audio")
+
+    def post_video(self, video_id: int, mp4: bytes, thumbnail_jpg: bytes, duration_ms: int) -> None:
+        """2호. 받으면 DONE과 푸시."""
+        self._post_files(f"/internal/videos/{video_id}/video",
+                         [("file", "video.mp4", "video/mp4", mp4), ("thumbnail", "thumb.jpg", "image/jpeg", thumbnail_jpg)],
+                         {"durationMs": str(duration_ms)})
+
     def post_image(self, comic_id: int, png: bytes) -> None:
         self._post_png(f"/internal/comics/{comic_id}/image", png, "comic.png")
 

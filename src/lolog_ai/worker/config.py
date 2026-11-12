@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-STREAMS = {"detect": "lolog:detect", "comic": "lolog:comic"}
+STREAMS = {"detect": "lolog:detect", "comic": "lolog:comic", "video": "lolog:video"}  # video: 3호(TTS)
 GROUP = "jetson-workers"
 
 
@@ -19,6 +19,7 @@ class Config:
     llm_api_key: str | None
     worker_name: str
     llm_model: str
+    tts_voices_dir: str = "/opt/lolog/voices"  # video(3호): 기본 화자 인사 클립 24개
     claim_idle_ms: int = 10 * 60 * 1000  # 10분 넘게 멈춘 메시지는 다시 가져옴 (api-spec "다시 시도")
     max_attempts: int = 3                 # 같은 jobId가 3번 실패하면 fail로 알림
 
@@ -43,4 +44,5 @@ def load(role: str) -> Config:
         llm_api_key=os.environ.get("LLM_API_KEY") or None,
         worker_name=need("WORKER_NAME"),
         llm_model=os.environ.get("LLM_MODEL", "local"),
+        tts_voices_dir=os.environ.get("TTS_VOICES_DIR", "/opt/lolog/voices"),
     )
