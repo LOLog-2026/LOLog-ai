@@ -443,6 +443,25 @@ D절의 확인 단계는 1~5점 중 하나만 받아 애매한 잡담과 진짜 
 - 질문을 하나 더 넣자 점수 분포가 바뀌어(평범한 대화의 기대 점수 중앙값이 올라감) 평범한 대화 오탐도 5.7 → 28로 나빠졌다
 - 4B 모델에게 묻는 방식으로는 방송을 못 거른다. 다른 신호가 필요하다: 폰 쪽에서 소리 특징(음악·여러 목소리·일정한 음량)으로 거르기, 녹음 안 한 사람 목소리가 길게 이어지는 구간 빼기, 더 큰 모델
 
+### I. 젯슨에서 모델 바꿔 가며 재기 (2026-11-13~, 진행 중)
+
+연구 서버에 접속이 안 돼 젯슨 1호만으로 모델을 비교한다. `jetson_model_sweep.sh`가 `jetson_models.tsv`의 모델을 모두 받고(`hf_fetch.py`),
+서비스를 멈춘 뒤 모델마다 llama-server(지금 서비스 옵션 + `--cache-ram 0`, 생각 모드는 끔)를 띄워
+short-stt·chat-stt(전부)·long2-stt(앞 2개)를 화자 생략으로 1번 잰다. 끝나면 서비스를 다시 켜고 `jetson-models-<시각>.md`에 모델별 표를 남긴다.
+
+```bash
+tmux new -s sweep
+cd ~/LOLog-ai-eval && git fetch origin && git checkout claude/project-thread-pf6ke1 && git pull
+cd experiments/261110-detect-eval
+DOWNLOAD_ONLY=1 bash jetson_model_sweep.sh     # 받기만(서비스는 그대로)
+bash jetson_model_sweep.sh                     # 측정. ONLY="qwen3.5-4b exaone4-1.2b" 로 일부만
+```
+
+후보: Qwen3-4B(지금, 기준) · Qwen3.5-4B · Kanana-2-3B · EXAONE 4.0 1.2B · Qwen3.5-2B · Kanana-2-1.3B · HyperCLOVA X SEED 1.5B · Gemma 4 E2B · Gemma 4 E4B.
+화자 생략 1번이라 F1 차이가 0.05 안쪽이면 "차이 없음"으로 보고, 이긴 모델만 3번·화자 포함으로 다시 잰다.
+
+결과: (측정 후 채움)
+
 ## 다음에 바꿔 볼 것 (한 번에 하나씩)
 
 1. 온도 0.2 → 0 (`temp0`): 흔들림이 줄어드는지
