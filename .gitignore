@@ -32,3 +32,6 @@ wandb/
 .vscode/
 .idea/
 .DS_Store
+
+experiments/261110-detect-eval/results/
+experiments/261110-detect-eval/sets-notv-cpu/
