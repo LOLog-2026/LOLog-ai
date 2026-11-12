@@ -59,6 +59,9 @@ restore() {
   echo "서비스 다시 켬: $(systemctl is-active lolog-llm lolog-worker@detect | paste -sd' ')"
 }
 trap restore EXIT
+# 몇 시간 뒤 끝날 때 서비스를 다시 켜는 sudo가 비밀번호를 다시 묻지 않게, 측정 중에 sudo 인증을 계속 살려 둔다
+sudo -v || exit 1
+( while kill -0 $$ 2>/dev/null; do sudo -n true 2>/dev/null; sleep 60; done ) &
 sudo systemctl stop lolog-worker@detect lolog-llm || exit 1
 
 export LLM_BASE_URL=http://127.0.0.1:$PORT/v1
