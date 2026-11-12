@@ -1,0 +1,623 @@
+{
+ "checker": "Claude 자동 회차",
+ "date": "2026-11-12",
+ "source": "/workspace/video-demo/devC-r9 check_0~3.png (8차 코드 9839229, 개발용 카드 C, 시드 33)",
+ "videos": {
+  "L03": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "화자3(흰 티)이 가운데와 오른쪽에 두 번 그려짐. 장면 글 'One student stands confidently'가 화자3을 따로 부름"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L26": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": null,
+     "note": "화자1·역무원 말고 왼쪽 녹색 옷 남자와 오른쪽 창구 남자가 중간 크기로 그려짐. 장면 글에 군중 없음(장소 글의 승객에서 온 것으로 보임, 애매해서 실패)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "L33": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "바닥 그림의 작은 낙서 글자는 영상에서 안 보일 크기라 통과"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": "바닥에 놓인 아이 그림 위에 가짜 한글 글씨가 읽힐 크기로 그려짐(장소 글 'children's drawings on the ground')"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "바닥에 가짜 한글 낙서 글씨 두 군데(애매해서 실패)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s19": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s36": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "안내판 글씨는 작아서 통과"
+    },
+    {
+     "B1": false,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "오른쪽 위 파란 안내판에 큰 가짜 한글 글씨(장면 글 'stares at a flight board')"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": false,
+     "B5": true,
+     "B6": true,
+     "note": "택시 기사가 서 있는데 택시 옆에서 손 흔드는 팔이 또 그려짐(장면 글 'A taxi driver is waving', 애매해서 실패)"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "오른쪽 위 안내판 글씨는 작아서 통과. 기사가 차 보닛에 앉아 있지만 기다리는 상황은 보임"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s40": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "젖어서 윗옷이 회청색으로 보이지만 파란 계열이라 B4 통과"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s53": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": false,
+     "B6": null,
+     "note": "팀장이 앞에 서서 보드를 가리키는 장면인데 팀장은 앉아 있고 화자2가 손가락으로 가리킴"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "화자1이 이 장면만 파란 셔츠 대신 파란 티지만 색이 같아 B4 통과"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s55": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "화자2 머리색이 장면마다 회색~진회색으로 조금 다르지만 머리 모양·윗옷(겨자색 스웨터)이 같아 B4 통과"
+    }
+   ]
+  },
+  "s57": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "벽시계 숫자는 작아서 통과"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글은 집 밖이지만 집 안에 서 있음. 핵심(서로 어이없어함)은 보여 B5 통과"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s69": {
+   "B4": true,
+   "B7": true,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s87": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": true,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "뒤쪽 학생들은 장면 글 'a group of students'라 세지 않음"
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    }
+   ]
+  },
+  "s88": {
+   "B4": true,
+   "B7": null,
+   "scenes": [
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": ""
+    },
+    {
+     "B1": true,
+     "B2": true,
+     "B3": true,
+     "B5": true,
+     "B6": null,
+     "note": "장면 글은 빵집 밖 벤치지만 빵집 안 벤치. 핵심 행동은 보여 B5 통과"
+    }
+   ]
+  }
+ }
+}
