@@ -1,0 +1,25 @@
+# 듣지 않고 받아쓰기·음높이 측정으로 고름 (2026-11-11)
+kid-f-01 0
+kid-f-02 0
+kid-f-03 0
+kid-f-04 1
+kid-m-01 0
+kid-m-02 0
+kid-m-03 0
+kid-m-04 1
+young-f-01 0
+young-f-02 0
+young-f-03 0
+young-f-04 0
+young-m-01 0
+young-m-02 0
+young-m-03 2
+young-m-04 1
+middle-f-01 0
+middle-f-02 0
+middle-f-03 0
+middle-f-04 1
+middle-m-01 1
+middle-m-02 0
+middle-m-03 0
+middle-m-04 1

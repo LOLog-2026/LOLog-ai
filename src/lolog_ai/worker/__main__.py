@@ -1,4 +1,4 @@
-"""워커 실행: python -m lolog_ai.worker --role detect|comic
+"""워커 실행: python -m lolog_ai.worker --role detect|comic|video
 
 큐 규칙 (spec/api-spec.md "큐 메시지")
 - 켜질 때 컨슈머 그룹 jetson-workers를 XGROUP CREATE ... MKSTREAM으로 만든다. 이미 있으면 넘어간다
@@ -21,12 +21,12 @@ import redis
 
 from . import config as cfgmod
 from .api import ApiError, InternalApi
-from .comic import StoryboardInvalid, avatar, comic
 from .detect import detect
 from .llm import Llm
+from .storyboard_gen import StoryboardInvalid
 
 log = logging.getLogger("lolog_ai.worker")
-GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
+GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND", "VIDEO_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
 FAIL_KEY = "lolog:worker:fail:{}"
 RETRY_DELAYS = [5, 30]  # 1번째, 2번째 실패 뒤 기다리는 초
 
@@ -40,6 +40,7 @@ class Worker:
         self.llm = Llm(cfg.llm_base_url, cfg.llm_model, cfg.llm_api_key)
         self.stopping = False
         self.last_claim = 0.0
+        self.tts = None  # video(3호)만. 켜질 때 한 번 올려 둔다
 
     # ---------- 큐 ----------
 
@@ -81,10 +82,20 @@ class Worker:
             self.api.post_cards(msg["recordingId"], result)
             log.info("job %s 감지 완료: 카드 %d개, carryFromMs=%s",
                      msg["jobId"], len(result["cards"]), result["carryFromMs"])
+        elif self.cfg.role == "video":
+            from .video import voice
+            voice(msg, self.api, self.llm, self.tts)
+            log.info("job %s 영상 목소리 완료: video %s", msg["jobId"], msg["videoId"])
+        elif msg.get("kind") == "video":
+            from .video import video
+            video(msg, self.api)
+            log.info("job %s 영상 완료: video %s", msg["jobId"], msg["videoId"])
         elif msg.get("kind") == "avatar":
+            from .comic import avatar  # 만화 코드(Pillow 등)는 2호에만 있어도 되게 여기서 부른다
             avatar(msg, self.api)
             log.info("job %s 프로필 캐릭터 완료: user %s", msg["jobId"], msg["userId"])
         else:
+            from .comic import comic
             comic(msg, self.api, self.llm)
             log.info("job %s 만화 완료: comic %s", msg["jobId"], msg["comicId"])
 
@@ -145,8 +156,16 @@ class Worker:
         return True
 
     def run(self) -> None:
-        log.info("LLM 서버 기다리는 중: %s", self.cfg.llm_base_url)  # 2호도 콘티에 1호 LLM을 씀
+        log.info("LLM 서버 기다리는 중: %s", self.cfg.llm_base_url)  # 2호·3호도 콘티에 1호 LLM을 씀
         self.llm.wait_ready()
+        if self.cfg.role == "video":
+            from ..tts import Tts
+            self.tts = Tts(self.cfg.tts_voices_dir)
+            if len(self.tts.voices()) < 24:
+                raise SystemExit(f"목소리 클립이 {len(self.tts.voices())}개예요(24개 필요): {self.cfg.tts_voices_dir}")
+            t0 = time.perf_counter()
+            self.tts.load()
+            log.info("TTS 모델 올림 %.0f초", time.perf_counter() - t0)
         while not self.stopping:  # 서버 Redis가 아직 없거나 터널이 끊겼으면 기다린다(로그는 30초에 한 번)
             try:
                 self.ensure_group()

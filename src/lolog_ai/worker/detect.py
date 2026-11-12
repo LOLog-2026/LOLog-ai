@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from .llm import Llm
+from .llm import Llm, LlmError
 
 log = logging.getLogger(__name__)
 
@@ -176,8 +176,16 @@ def detect(msg: dict, llm: Llm) -> dict:
         result["carryFromMs"] = min([window] + [sents[s["from"]]["startMs"] for s in carry])
 
     for s in keep:
-        res, stat = llm.chat_json(SPEAKER_SYSTEM, numbered(sents, s["from"], s["to"]),
-                                  SPEAKER_SCHEMA, "speakers")
+        # 화자 나누기 출력이 max_tokens에서 잘리거나 JSON이 깨지면(같은 말 되풀이 등) 이 이야기만 버리고 나머지 카드는 살린다.
+        # 예전엔 예외가 detect() 밖으로 나가 녹음 하나의 카드가 통째로 사라졌다(평가셋 짧은 녹음 75개 중 2개).
+        # 서버가 안 받는 등 LlmError가 아닌 오류는 그대로 올려 작업을 다시 시도하게 한다
+        try:
+            res, stat = llm.chat_json(SPEAKER_SYSTEM, numbered(sents, s["from"], s["to"]),
+                                      SPEAKER_SCHEMA, "speakers")
+        except LlmError as e:
+            log.warning("job %s 화자 나누기 실패로 이야기 하나를 버림(구간 %d~%d): %s",
+                        msg["jobId"], s["from"], s["to"], e)
+            continue
         lines = [l for l in res.get("lines", []) if s["from"] <= l["seg"] <= s["to"]]
         if not lines:
             log.warning("job %s 화자 나누기 결과가 비어 이야기 하나를 버림", msg["jobId"])

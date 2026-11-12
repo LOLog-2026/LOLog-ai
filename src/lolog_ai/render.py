@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from PIL import Image
 
 STYLE = ("Korean webtoon style comic, clean black line art, flat pastel colors, "
@@ -14,7 +16,8 @@ NO_TEXT = "No text, no letters, no speech bubbles."
 WHERE = {"left": "on the left", "center": "in the center", "right": "on the right"}
 
 
-KEEP_REF = "Keep each referenced person's face, hairstyle, glasses and clothes exactly as in the image."
+# "glasses"를 쓰면 안경 없는 참조 인물에게도 안경을 그렸다(#33 3차 s31). 안경은 참조 그림을 따른다
+KEEP_REF = "Keep each referenced person's face, hairstyle, accessories and clothes exactly as in the image."
 PORTRAIT = ("Character portrait of {look}. Front view, upper body, facing the viewer, gentle smile, "
             "centered, plain white background.")
 
@@ -24,10 +27,19 @@ def ref_keys(panel: dict, with_ref: set[str] | frozenset[str]) -> list[str]:
     return [c["key"] for c in panel["cast"] if c["key"] in with_ref]
 
 
+_NEGATED = re.compile(r",?\s*\b(no|without)\s+(glasses|hat|beard|mustache|earrings)\b", re.IGNORECASE)
+
+
+def positive(appearance: str) -> str:
+    """"no glasses"처럼 없는 것을 적은 말을 뺀다. 그림 모델은 부정을 못 읽고 "glasses"만 보고 안경을 그렸다
+    (#33 2차: 안경 없는 기본 화자 middle-m-01이 모든 장면에서 안경을 씀. 기본 화자 24명 중 12명이 "no glasses")."""
+    return _NEGATED.sub("", appearance).strip(" ,")
+
+
 def cast_text(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = frozenset()) -> str:
     """참조 그림이 있는 인물은 'the person from image N (외모 글)'으로 부른다(#ref 벤치: 외모 글을 같이 넣어야
     안경 같은 특징이 참조 없는 인물에게 옮겨 붙는 일이 줄었다)."""
-    look = {c["key"]: c["appearance"] for c in sb["characters"]}
+    look = {c["key"]: positive(c["appearance"]) for c in sb["characters"]}
     order = {k: i + 1 for i, k in enumerate(ref_keys(panel, with_ref))}
     parts = []
     for c in panel["cast"]:
@@ -43,6 +55,50 @@ def prompt(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = frozense
     keep = f" {KEEP_REF}" if ref_keys(panel, with_ref) else ""
     return (f"{STYLE}. A single comic panel. Setting: {sb['place']['prompt']}. "
             f"{panel['scene']} {cast_text(sb, panel, with_ref)}.{keep} {NO_TEXT}")
+
+
+_CROWD = re.compile(r"\b(crowd|students|people|group|coworkers|classmates|audience|passengers|customers)\b",
+                    re.IGNORECASE)
+
+# 영상 장면(#33): STYLE의 "comic"이 있으면 한 장을 두 칸으로 나눠 그리는 일이 있어 화풍 문장을 따로 둔다
+VIDEO_STYLE = ("Korean webtoon style illustration, clean black line art, flat pastel colors, "
+               "simple and cute characters")
+NO_SIGN_TEXT = ("One single full-frame illustration, not divided into panels, no borders. "
+                "Any signs and storefronts are plain without writing. "
+                "Phone and computer screens are blank or show only soft color.")
+
+
+def video_prompt(sb: dict, scene: dict, with_ref: set[str] | frozenset[str] = frozenset()) -> str:
+    """영상 장면 하나(video_storyboard). 화자(cast)에 더해 화자가 아닌 이야기 속 인물(extras)도 넣는다."""
+    from .video_storyboard import kinds_of
+
+    people, things = [], []
+    if scene.get("cast"):
+        people.append(cast_text(sb, scene, with_ref).removeprefix("Characters "))
+    look = {e["id"]: positive(e["appearance"]) for e in sb.get("extras") or []}
+    n = len(scene.get("cast") or [])  # 예전에는 cast 전체를 한 덩이로 세어 둘이어도 "one person"이 됐다(#33 5차)
+    for e in scene.get("extras") or []:
+        expr = f", {e['expression']}" if e.get("expression") else ""
+        text = f"{WHERE[e['position']]}: {look[e['id']]}{expr}"
+        if kinds_of(look[e["id"]]):
+            people.append(text)
+            n += 1
+        else:  # 동물·물건은 사람 수에 넣지 않는다. 넣으면 개가 두 마리 그려졌다(#33 5차 s02)
+            things.append(text)
+    # 사람 수와 사람을 장면 글보다 먼저 쓴다. 장면 글의 "the man"과 인물 설명을 따로 읽어 같은 사람을 둘로
+    # 그리는 일이 많았다(#33 3차 B3 같은 사람 둘 10장)
+    crowd = bool(_CROWD.search(scene["scene"]))
+    if not n:
+        who = "No people in this picture."
+    else:
+        count = "one person" if n == 1 else f"{['two', 'three', 'four'][min(n, 5) - 2]} people"
+        lead = "The picture shows" if crowd else "The picture shows exactly"
+        who = f"{lead} {count}, each appears only once: {'; '.join(people)}."
+    if things:
+        who += f" Also, each only once: {'; '.join(things)}."
+    keep = f" {KEEP_REF}" if ref_keys(scene, with_ref) else ""
+    return (f"{VIDEO_STYLE}. Setting: {sb['place']['prompt']}. {who} Scene: {scene['scene']}{keep} "
+            f"{NO_SIGN_TEXT} {NO_TEXT}")
 
 
 def portrait_prompt(appearance: str, from_photo: bool = False) -> str:
