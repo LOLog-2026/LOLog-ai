@@ -443,7 +443,7 @@ D절의 확인 단계는 1~5점 중 하나만 받아 애매한 잡담과 진짜 
 - 질문을 하나 더 넣자 점수 분포가 바뀌어(평범한 대화의 기대 점수 중앙값이 올라감) 평범한 대화 오탐도 5.7 → 28로 나빠졌다
 - 4B 모델에게 묻는 방식으로는 방송을 못 거른다. 다른 신호가 필요하다: 폰 쪽에서 소리 특징(음악·여러 목소리·일정한 음량)으로 거르기, 녹음 안 한 사람 목소리가 길게 이어지는 구간 빼기, 더 큰 모델
 
-### I. 젯슨에서 모델 바꿔 가며 재기 (2026-11-13~, 진행 중)
+### I. 젯슨에서 모델 바꿔 가며 재기 (젯슨 1호, 2026-11-13)
 
 연구 서버에 접속이 안 돼 젯슨 1호만으로 모델을 비교한다. `jetson_model_sweep.sh`가 `jetson_models.tsv`의 모델을 모두 받고(`hf_fetch.py`),
 서비스를 멈춘 뒤 모델마다 llama-server(지금 서비스 옵션 + `--cache-ram 0`, 생각 모드는 끔)를 띄워
@@ -451,7 +451,7 @@ short-stt·chat-stt(전부)·long2-stt(앞 2개)를 화자 생략으로 1번 잰
 
 ```bash
 tmux new -s sweep
-cd ~/LOLog-ai-eval && git fetch origin && git checkout claude/project-thread-pf6ke1 && git pull
+cd ~/LOLog-ai-eval && git fetch origin && git checkout develop && git pull
 cd experiments/261110-detect-eval
 DOWNLOAD_ONLY=1 bash jetson_model_sweep.sh     # 받기만(서비스는 그대로)
 bash jetson_model_sweep.sh                     # 측정. ONLY="qwen3.5-4b exaone4-1.2b" 로 일부만
@@ -460,7 +460,28 @@ bash jetson_model_sweep.sh                     # 측정. ONLY="qwen3.5-4b exaone
 후보: Qwen3-4B(지금, 기준) · Qwen3.5-4B · Kanana-2-3B · EXAONE 4.0 1.2B · Qwen3.5-2B · Kanana-2-1.3B · HyperCLOVA X SEED 1.5B · Gemma 4 E2B · Gemma 4 E4B.
 화자 생략 1번이라 F1 차이가 0.05 안쪽이면 "차이 없음"으로 보고, 이긴 모델만 3번·화자 포함으로 다시 잰다.
 
-결과: (측정 후 채움)
+결과 (`jetson-models-1113-0203.md`, variant=base, 화자 생략, 1번, long2 앞 2개)
+
+| 모델 | 파일 | short F1 | P | R | kind | chat fp/h | long2 F1 | long2 R | fmt | 출력 토큰/초 | RAM 최대 | 걸린 시간 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Qwen3-4B-Instruct-2507 (지금 서비스) | Q4_K_M 2.5GB | 0.827 | 0.868 | 0.79 | 0.506 | 45.6 | 0.621 | 0.474 | 0 | 9.7 | 5.9GB | 32분 |
+| **Qwen3.5-4B** | unsloth Q4_K_M 2.6GB | **0.844** | 0.848 | **0.84** | **0.619** | 41.5 | **0.69** | **0.526** | 2 | 9.8* | 5.2GB | 58분* |
+| Kanana-2-3B-Instruct | mradermacher Q4_K_M 2.1GB | 0.117 | 0.079 | 0.22 | 0.455 | 25.8 | 0.051 | 0.026 | 5 | 11.8* | 5.0GB | 57분* |
+| EXAONE 4.0 1.2B | 공식 Q4_K_M 0.8GB | 0.494 | 0.406 | 0.63 | 0.349 | 41.5 | 0.178 | 0.105 | 3 | 26.2 | 3.2GB | 21분 |
+| Qwen3.5-2B | unsloth Q4_K_M 1.2GB | 0.494 | 0.672 | 0.39 | 0.487 | 30.6 | 0 | 0 | 5 | 20.0 | 3.2GB | 15분 |
+| Kanana-2-1.3B-Instruct | winwinplatform Q4_K_M | 서버가 안 뜸(model loading error) | | | | | | | | | | |
+| HyperCLOVA X SEED 1.5B | rippertnt Q4_K_M 1.1GB | 0.5 | 0.818 | 0.36 | 0.361 | 17.7 | 0.367 | 0.237 | 0 | 22.4 | 3.5GB | 6분 |
+| Gemma 4 E2B | ggml-org Q4_0 2.7GB | 0.276 | 1.0 | 0.16 | 0.688 | 2.7 | 0.051 | 0.026 | 14 | 17.5 | 4.7GB | 64분 |
+| Gemma 4 E4B | ggml-org Q4_0 4.3GB | 측정 중 멈춤(사용자가 Qwen3.5-4B로 확정) | | | | | | | | | | |
+
+\* 02:09~06:00에 같은 스크립트가 실수로 한 번 더 돌아 같은 서버에 요청이 겹쳤다. 이 구간의 속도·시간은 부풀었고, 정확도는 영향이 작다고 본다(겹친 쪽 결과는 `jetson-models-1113-0209.INVALID.md`로 버림).
+
+판정
+- **Qwen3.5-4B 채택.** 지금 모델보다 short F1 +0.017(재현율 0.79→0.84), long2 F1 +0.07, 종류 정확도 +0.11, 오탐 조금 감소. RAM은 0.7GB 적고 출력 속도는 비슷하다. 1번 측정이라 F1 차이(0.02~0.07)는 흔들림 범위에 걸치지만 모든 지표가 같은 방향이고 종류 정확도 차이는 크다
+- 1~2B 모델은 출력이 2~3배 빠르지만 F1이 0.5 아래로 떨어져 감지에 못 쓴다. HyperCLOVA 1.5B가 그중 정밀도(0.82)와 오탐이 가장 낫다
+- Kanana-2-3B·Qwen3.5-2B·Gemma 4 E2B는 형식 실패(fmt)가 많아 점수가 낮다. 비공식 변환본·채팅 템플릿 문제일 수 있어 모델 실력으로 단정하지 않는다
+- 적용: LOLog-infra#12(`lolog-llm` 모델 경로, `--cache-ram 0`, 생각 모드 끄기). 같은 서버를 쓰는 만화·영상 콘티도 이 모델로 바뀐다
+- 남은 것: 화자 포함 3번 측정, 콘티 품질 확인(만화 dry-run), 추측 디코딩(n-gram) 적용 여부
 
 ## 다음에 바꿔 볼 것 (한 번에 하나씩)
 
