@@ -19,8 +19,10 @@ import shutil
 import subprocess
 import tempfile
 import time
+from typing import TYPE_CHECKING
 
-import numpy as np
+if TYPE_CHECKING:  # numpy는 소리를 다룰 때만 불러, numpy가 없는 1·2호에서도 이 모듈을 import할 수 있게 한다
+    import numpy as np
 
 log = logging.getLogger(__name__)
 
@@ -51,10 +53,14 @@ class VoiceSampleInvalid(Exception):
 
 
 def _db(x: float) -> float:
+    import numpy as np
+
     return 20 * np.log10(max(x, 1e-9))
 
 
 def _resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
+    import numpy as np
+
     if sr == target:
         return wav
     try:
@@ -69,6 +75,8 @@ def _resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
 def _ffmpeg_decode(data: bytes) -> np.ndarray:
     """m4a 등을 ffmpeg로 푼다. 폰이 녹음한 m4a는 목차(moov)가 파일 끝에 있어 파이프(pipe:0)로 넣으면
     읽지 못하고 빈 소리를 돌려준다(종료 코드는 0). 그래서 임시 파일에 써서 넘긴다."""
+    import numpy as np
+
     exe = os.environ.get("FFMPEG") or shutil.which("ffmpeg")
     if not exe:
         raise RuntimeError("m4a 녹음을 풀려면 ffmpeg가 필요해요(3호에 apt install ffmpeg, 또는 환경 변수 FFMPEG)")
@@ -103,6 +111,8 @@ def check_sample(wav: np.ndarray, sr: int = SR) -> np.ndarray:
 
     기본 화자 클립(experiments/261111-tts-default-voices make_voices.py의 norm)과 같은 모양으로 맞춰 참조 음성으로 쓴다.
     """
+    import numpy as np
+
     wav = np.asarray(wav, dtype=np.float32).reshape(-1)
     if len(wav) / sr > MAX_SEC:
         raise VoiceSampleInvalid("VOICE_TOO_LONG", f"{len(wav) / sr:.1f}s")
@@ -127,6 +137,7 @@ def prepare(data: bytes) -> np.ndarray:
 
 def voice_clone(msg: dict, api, tts) -> None:
     """미리 듣기를 만들어 올린다. 녹음이 이상하면 VoiceSampleInvalid(워커가 바로 fail)."""
+    import numpy as np
     import soundfile as sf
 
     user_id = int(msg["userId"])

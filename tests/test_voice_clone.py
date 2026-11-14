@@ -252,3 +252,18 @@ def test_worker_routes_voice_clone(monkeypatch):
     w.run_job({"jobId": 1, "kind": "voice_clone", "userId": 42, "text": "문장"})
     w.run_job({"jobId": 2, "videoId": 7})
     assert calls == [("clone", 42), ("shorts", 7)]
+
+
+def test_worker_imports_without_numpy():
+    """1호(감지)·2호에는 numpy가 없을 수 있다. 워커 진입점과 콘티 검사가 numpy 없이 import돼야 한다."""
+    import subprocess
+    import sys
+
+    code = (
+        "import sys; sys.modules['numpy'] = None\n"
+        "import lolog_ai.worker.voice_clone, lolog_ai.sounds, lolog_ai.video_storyboard\n"
+        "import lolog_ai.worker.video_gen\n"
+        "try:\n    import redis\nexcept ImportError:\n    pass\nelse:\n    import lolog_ai.worker.__main__\n"
+    )
+    p = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr

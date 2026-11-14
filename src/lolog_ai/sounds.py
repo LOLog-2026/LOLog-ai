@@ -11,7 +11,10 @@ numpy만 쓴다.
 
 from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # numpy는 소리를 다룰 때만 불러, numpy가 없는 1·2호에서도 이 모듈을 import할 수 있게 한다
+    import numpy as np
 
 # 효과음 검색어 → 콘티 LLM에게 보여 주는 뜻(언제 쓰는지)
 SFX = {
@@ -70,6 +73,8 @@ def to_null(v: str | None) -> str | None:
 
 
 def resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
+    import numpy as np
+
     wav = np.asarray(wav, dtype=np.float32).reshape(-1)
     if sr == target or len(wav) == 0:
         return wav
@@ -83,11 +88,15 @@ def resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
 
 
 def _peak_to(wav: np.ndarray, db: float) -> np.ndarray:
+    import numpy as np
+
     peak = float(np.abs(wav).max()) if len(wav) else 0.0
     return wav if peak <= 0 else wav * (_db(db) / peak)
 
 
 def _fade(wav: np.ndarray, sr: int, in_ms: int, out_ms: int) -> np.ndarray:
+    import numpy as np
+
     wav = wav.copy()
     a, b = min(len(wav), sr * in_ms // 1000), min(len(wav), sr * out_ms // 1000)
     if a:
@@ -99,6 +108,8 @@ def _fade(wav: np.ndarray, sr: int, in_ms: int, out_ms: int) -> np.ndarray:
 
 def duck_envelope(sb: dict, n: int, sr: int) -> np.ndarray:
     """배경음에 곱할 크기(샘플마다). 대사 구간(앞뒤 여유 포함)은 BGM_DUCK_DB, 나머지는 BGM_DB, 사이는 부드럽게."""
+    import numpy as np
+
     step = sr // 100  # 10ms 단위로 만들고 늘린다
     m = n // step + 2
     hi, lo = _db(BGM_DB), _db(BGM_DUCK_DB)
@@ -123,6 +134,8 @@ def mix(track: np.ndarray, sr: int, sb: dict, sfx: dict[int, np.ndarray] | None 
     배경음은 영상 길이만큼 이어 붙여 처음·끝을 페이드하고, 대사가 나오는 동안 줄인다.
     다 섞은 뒤 넘치면(peak > 0.99) 전체를 줄인다.
     """
+    import numpy as np
+
     out = np.asarray(track, dtype=np.float32).copy()
     n = len(out)
     scenes = {s["index"]: s for s in sb.get("scenes") or []}
