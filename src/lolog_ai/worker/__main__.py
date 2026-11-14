@@ -25,10 +25,11 @@ from .detect import detect
 from .llm import Llm
 from .storyboard_gen import StoryboardInvalid
 from .text_card import text_card
+from .voice_clone import VoiceSampleInvalid
 
 log = logging.getLogger("lolog_ai.worker")
 GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND", "VIDEO_NOT_FOUND",
-              "TEXT_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
+              "TEXT_NOT_FOUND", "VOICE_CLONE_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
 FAIL_KEY = "lolog:worker:fail:{}"
 RETRY_DELAYS = [5, 30]  # 1번째, 2번째 실패 뒤 기다리는 초
 
@@ -89,6 +90,11 @@ class Worker:
             self.api.post_cards(msg["recordingId"], result)
             log.info("job %s 감지 완료: 카드 %d개, carryFromMs=%s",
                      msg["jobId"], len(result["cards"]), result["carryFromMs"])
+        elif self.cfg.role == "video" and msg.get("kind") == "voice_clone":
+            # 내 목소리 미리 듣기(characters.md "내 목소리"). 쇼츠 대사와 같은 3호 큐·같은 TTS 모델
+            from .voice_clone import voice_clone
+            voice_clone(msg, self.api, self.tts)
+            log.info("job %s 내 목소리 완료: user %s", msg["jobId"], msg["userId"])
         elif self.cfg.role == "video":
             from .video import voice
             voice(msg, self.api, self.llm, self.tts)
@@ -140,7 +146,8 @@ class Worker:
 
     def _failed(self, mid: str, job_id: int, key: str, e: Exception) -> bool:
         """실패 한 번을 세고, 끝났으면(메시지를 지웠거나 남겨 두기로 했으면) True. 아니면 잠깐 쉬고 False."""
-        permanent = isinstance(e, StoryboardInvalid) or (isinstance(e, ApiError) and e.status == 400)
+        permanent = isinstance(e, (StoryboardInvalid, VoiceSampleInvalid)) or (
+            isinstance(e, ApiError) and e.status == 400)
         n = self.cfg.max_attempts if permanent else self.r.incr(key)
         self.r.expire(key, 86400)
         log.warning("job %s 실패 %d/%d: %s", job_id, n, self.cfg.max_attempts,
@@ -149,7 +156,9 @@ class Worker:
             time.sleep(RETRY_DELAYS[min(n - 1, len(RETRY_DELAYS) - 1)])
             return False
         try:
-            self.api.fail_job(job_id, f"{type(e).__name__}: {e}")
+            # 녹음 검사 실패는 코드만(VOICE_TOO_QUIET 등). 앱이 voiceClone.failReason으로 받아 안내 문구를 고른다
+            reason = e.code if isinstance(e, VoiceSampleInvalid) else f"{type(e).__name__}: {e}"
+            self.api.fail_job(job_id, reason)
         except ApiError as e2:
             if e2.status != 400:
                 log.error("job %s fail 알림도 실패, 메시지를 남겨 둠: %s", job_id, e2)

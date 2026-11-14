@@ -1,5 +1,10 @@
 """한 번에 하나씩 바꿀 설정. base가 지금 워커(detect.py) 그대로다.
 
+2026-11-14부터 워커가 kc8+verify-lp + spk-json(창 8분, 확인 기대 점수 3.9, 공백 없는 화자 JSON)을 기본으로 한다.
+그래서 base = 예전 kc8+verify-lp + spk-json이고, 예전 base(한 번에 찾기, 거르지 않음)는 `prev`다.
+아래의 다른 변형(p-*, chunk*, kc8+*, spk-*)은 그 전 워커를 기준으로 만든 것이라, 다시 돌리려면
+워커를 그 전 커밋으로 두고 돌린다(지금 워커 위에 얹으면 창 나누기·확인이 두 번 걸린다).
+
 키
   temperature     detect·speakers 호출 온도 (워커 기본 0.2)
   detect_system   DETECT_SYSTEM 전체를 바꿈
@@ -45,6 +50,11 @@ NEW_MULTI = ("- 한 녹음에 이야기가 여럿이면 따로 나눈다. 긴 �
 
 VARIANTS: dict[str, dict] = {
     "base": {},
+    # 2026-11-13까지의 서비스 워커: 원래 종류 정의, 한 번에 찾기, 확인 없음, 화자 JSON 스키마
+    "prev": {"detect_replace": [("__NEW_KINDS__", "__OLD_KINDS__")], "worker": {
+        "WINDOW_MS": 0, "VERIFY_MIN": 0, "SPEAKER_GRAMMAR": None}},
+    # 확인 단계만 끔(창 나누기·p-kind·spk-json은 그대로): 확인 단계가 젯슨 시간에 얼마나 드는지 볼 때
+    "no-verify": {"worker": {"VERIFY_MIN": 0}},
     "temp0": {"temperature": 0.0},
     "p-story": {"detect_replace": [(OLD_STORY_RULE, NEW_STORY_RULE)]},
     "p-kind": {"detect_replace": [(OLD_KINDS, NEW_KINDS)]},
@@ -100,7 +110,13 @@ broadcast: 이 부분이 사람들이 직접 나눈 대화가 아니라 틀어 �
 
 
 def apply(det_module, v: dict) -> None:
+    for name, value in v.get("worker", {}).items():  # detect.py의 모듈 상수를 바꾼다
+        if not hasattr(det_module, name):
+            raise ValueError(f"detect.py에 {name}이 없음")
+        setattr(det_module, name, value)
+    alias = {"__NEW_KINDS__": NEW_KINDS, "__OLD_KINDS__": OLD_KINDS}
     for old, new in v.get("detect_replace", []):
+        old, new = alias.get(old, old), alias.get(new, new)
         if old not in det_module.DETECT_SYSTEM:
             raise ValueError(f"DETECT_SYSTEM에 바꿀 문장이 없음: {old[:40]}")
         det_module.DETECT_SYSTEM = det_module.DETECT_SYSTEM.replace(old, new)
