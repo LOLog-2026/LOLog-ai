@@ -11,6 +11,7 @@ import json
 import logging
 import re
 
+from ..sounds import BGM, MAX_SFX, NONE, SFX, to_null
 from ..video_storyboard import (
     MAX_LINES,
     MAX_SCENES,
@@ -20,7 +21,7 @@ from ..video_storyboard import (
     TRANSITIONS,
     validate,
 )
-from .llm import Llm
+from .llm import Llm, LlmError
 from .storyboard_gen import StoryboardInvalid, _character, card_text, fixed_looks
 
 log = logging.getLogger(__name__)
@@ -80,6 +81,12 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - zoom 웃음 포인트로 들어갈 때 / flash 충격·반전
 - 같은 효과만 계속 쓰지 않는다
 
+소리(sfx, bgm): 영상에 작게 섞이는 효과음과 배경음. 아래 값 중에서만 고른다
+- sfx는 장면마다 하나 또는 "none". 그 장면의 행동·반응에 딱 맞는 소리가 있을 때만 고르고, 영상 전체에 {MAX_SFX}개까지. 나머지는 "none"
+- bgm은 영상 전체 분위기 하나 또는 "none"
+- 효과음: {", ".join(f"{k}({v})" for k, v in SFX.items())}
+- 배경음: {", ".join(f"{k}({v})" for k, v in BGM.items())}
+
 장소(place)
 - text는 한국어 장소 이름. 카드에 장소가 있으면 그대로 쓴다. 없으면 이야기에서 정한다
 - prompt는 그 장소의 영어 배경 설명"""
@@ -111,8 +118,9 @@ def _schema(keys: list[str]) -> dict:
                 "required": ["speaker", "text", "sourceLineIds"]}},
             "motion": {"type": "string", "enum": MOTIONS},
             "transition": {"type": "string", "enum": TRANSITIONS},
+            "sfx": {"type": "string", "enum": [*SFX, NONE]},
         },
-        "required": ["flashback", "scene", "cast", "extras", "lines", "motion", "transition"],
+        "required": ["flashback", "scene", "cast", "extras", "lines", "motion", "transition", "sfx"],
     }
     return {
         "type": "object",
@@ -129,8 +137,9 @@ def _schema(keys: list[str]) -> dict:
                                                  "appearance": en},
                 "required": ["id", "appearance"]}},
             "scenes": {"type": "array", "minItems": MIN_SCENES, "maxItems": MAX_SCENES, "items": scene},
+            "bgm": {"type": "string", "enum": [*BGM, NONE]},
         },
-        "required": ["place", "characters", "extras", "scenes"],
+        "required": ["place", "characters", "extras", "scenes", "bgm"],
     }
 
 
@@ -142,7 +151,7 @@ def clean_scene(text: str) -> str:
     LLM이 규칙을 자주 어겨서 다시 묻지 않고 코드가 지운다."""
     out = _QUOTED.sub("", text)
     out = re.sub(r"(,\s*|\band\s+|\bwith\s+)?(a\s+)?(bright\s+|colorful\s+|large\s+|small\s+)?(neon\s+)?"
-                 r"(signs?|signboards?|banners?|posters?|menus?|menu\s+boards?|white\s*boards?|black\s*boards?|"
+                 r"(signboards?|signs?|banners?|posters?|menu\s+boards?|menus?|white\s*boards?|black\s*boards?|"
                  r"chalk\s*boards?|bulletin\s+boards?|notice\s+boards?|calendars?)\b"
                  r"(\s+(filled|covered)\s+with\s+\w+(\s+\w+)?)?", "", out, flags=re.IGNORECASE)
     # 문자·메시지·채팅 화면을 그리라고 하면 말풍선과 가짜 글씨가 생겼다(#33 3차 s31 3장)
@@ -353,6 +362,19 @@ def trim_lines(sb: dict, limit_s: float = TARGET_MAX_S) -> None:
             s["transition"] = "fade"
 
 
+def fix_sounds(sb: dict, bgm: str | None) -> None:
+    """효과음·배경음 값을 맞춘다. 목록에 없는 값은 지우고, 효과음은 앞에서부터 MAX_SFX개까지,
+    바로 앞 장면과 같은 효과음은 지운다(같은 소리가 연달아 나면 어색함). LLM이 넘쳐도 다시 묻지 않는다."""
+    sb["bgm"] = bgm if bgm in BGM else None
+    kept, prev = 0, None
+    for sc in sb["scenes"]:
+        v = sc.get("sfx")
+        if v not in SFX or v == prev or kept >= MAX_SFX:
+            v = None
+        sc["sfx"], prev = v, v
+        kept += v is not None
+
+
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -379,7 +401,9 @@ def assemble(raw: dict, src: dict) -> dict:
                 cast = [c for c in cast if c["key"] not in listeners]
         sb["scenes"].append({"index": i + 1, "flashback": flashback, "scene": clean_scene(p["scene"]),
                              "cast": cast, "extras": _extras(p, sb["extras"], cast), "lines": lines,
-                             "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"]})
+                             "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"],
+                             "sfx": to_null(p.get("sfx"))})
+    fix_sounds(sb, raw.get("bgm"))
     for i, c in enumerate(sb["characters"]):
         if not c.get("ref"):  # 고른 그림의 외모 글은 그대로 둔다
             c["appearance"] = fix_appearance(c, i)
@@ -400,14 +424,22 @@ def make_video_storyboard(src: dict, llm: Llm) -> dict:
     schema = _schema(keys)
     user = card_text(src)
     errs: list[str] = []
+    last_llm_err: LlmError | None = None
     for attempt in (1, 2, 3):
-        msg = user if attempt == 1 else (
+        msg = user if not errs else (
             user + "\n\n앞에서 만든 콘티에 아래 문제가 있었다. 고쳐서 다시 만든다.\n- " + "\n- ".join(errs[:15]))
-        raw, stat = llm.chat_json(SYSTEM, msg, schema, "video_storyboard", temperature=0.4, max_tokens=4096)
+        try:
+            raw, stat = llm.chat_json(SYSTEM, msg, schema, "video_storyboard", temperature=0.4, max_tokens=4096)
+        except LlmError as e:  # 출력이 잘리거나 깨짐, 서버 형식 오류(500): 다음 번에 다시 묻는다
+            log.warning("video %s 콘티 %d번째: LLM 오류 %s", src.get("videoId"), attempt, e)
+            last_llm_err = e
+            continue
         sb = assemble(raw, src)
         errs = validate(sb, src)
         log.info("video %s 콘티 %d번째: 장면 %d개, 문제 %d개 %s", src.get("videoId"), attempt,
                  len(sb["scenes"]), len(errs), stat)
         if not errs:
             return sb
+    if not errs and last_llm_err:  # 세 번 다 LLM 오류: 예전처럼 작업을 다시 시도하게 그대로 올린다
+        raise last_llm_err
     raise StoryboardInvalid("영상 콘티 검사 실패: " + json.dumps(errs[:5], ensure_ascii=False))

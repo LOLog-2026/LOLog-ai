@@ -4,6 +4,7 @@
 같은 입력이면 같은 영상이 나온다. 필요한 것은 Pillow, numpy, ffmpeg 실행 파일뿐이다.
 
     render(storyboard, images, "audio.wav", "out.mp4")      # images: 장면 순서의 PIL 그림(정사각형)
+    render(..., lips=lipsync.plan(...))                     # 말하는 입모양·눈 깜빡임을 프레임마다 바꿔 넣는다
 
 화면(세로 720×1280): 장면 그림을 흐리게 키운 배경 위에, 그림(720×720)을 위쪽에 두고 아래에 자막을 쓴다.
 시간표(startMs·endMs)는 video_storyboard.timeline()이 채운 값을 쓴다.
@@ -20,7 +21,7 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 from .video_storyboard import TRANSITION_MS
 
@@ -132,8 +133,9 @@ class _Subtitles:
 
 
 class _Scene:
-    def __init__(self, scene: dict, image: Image.Image, W: int, H: int):
+    def __init__(self, scene: dict, image: Image.Image, W: int, H: int, lip: dict | None = None, fps: int = 30):
         self.s, self.W = scene, W
+        self.lip, self.fps, self._cache = lip, fps, {}
         self.img = image.convert("RGB")
         if self.img.width != self.img.height:
             side = min(self.img.size)
@@ -143,11 +145,62 @@ class _Scene:
         bg = bg.filter(ImageFilter.GaussianBlur(24))
         self.bg = Image.eval(bg, lambda v: int(v * 0.42))
 
+    def _state(self, n: int) -> tuple:
+        mouths = self.lip["frames"].get(n)
+        eyes = (self.lip.get("eye_frames") or {}).get(n)
+        blink = self.lip["blink"] is not None and n in self.lip["blinks"]
+        return (blink, tuple(sorted(mouths.items())) if mouths else None, tuple(sorted(eyes.items())) if eyes else None)
+
+    def _patch(self, kind: str, face: int, name: str):
+        """바꿔 넣을 조각과, 원래 그림과 달라진 자리만 덮는 마스크(눈 조각과 입 조각의 상자가 겹쳐도 서로 지우지 않게)."""
+        key = ("patch", kind, face, name)
+        if key not in self._cache:
+            lp = self.lip
+            box = (lp["eye_boxes"] if kind == "eye" else lp["boxes"])[face]
+            crop = (lp["eye_variants"] if kind == "eye" else lp["variants"])[face][name].crop(box)
+            diff = ImageChops.difference(crop, self.img.crop(box)).convert("L").point(lambda v: 255 if v > 3 else 0)
+            self._cache[key] = (crop, diff.filter(ImageFilter.MaxFilter(5)), box)
+        return self._cache[key]
+
+    def _compose(self, key: tuple) -> Image.Image:
+        """(눈 감음, 얼굴별 입모양, 얼굴별 눈) 조합의 장면 그림. 조합마다 한 번만 만든다."""
+        if key not in self._cache:
+            blink, mouths, eyes = key
+            img = self.lip["blink"] if blink else self.img
+            if mouths or eyes:
+                img = img.copy()
+                for kind, items in (("eye", eyes), ("mouth", mouths)):
+                    for face, name in items or ():
+                        crop, mask, box = self._patch(kind, face, name)
+                        img.paste(crop, box[:2], mask)
+            self._cache[key] = img
+        return self._cache[key]
+
+    def _art(self, t_ms: float) -> Image.Image:
+        """이 시각의 장면 그림. 립싱크가 있으면 말하는 얼굴의 입 둘레와 감은 눈을 바꿔 넣고, 고개를 조금 움직인다."""
+        if not self.lip:
+            return self.img
+        n = round(t_ms / 1000 * self.fps)
+        key = self._state(n)
+        img = self._compose(key)
+        if self.lip.get("blend"):  # 입모양이 바뀌는 첫 프레임은 앞 모양과 반씩 섞는다(딱딱 끊기지 않게)
+            prev = self._state(n - 1)
+            if prev != key:
+                bk = ("blend", prev, key)
+                if bk not in self._cache:
+                    self._cache[bk] = Image.blend(self._compose(prev), img, 0.5)
+                img = self._cache[bk]
+        moves = (self.lip.get("moves") or {}).get(n)
+        if moves:
+            from .lipsync import move_heads
+            img = move_heads(img, self.lip["heads"], moves)
+        return img
+
     def frame(self, t_ms: float) -> Image.Image:
         s = self.s
         p = (t_ms - s["startMs"]) / max(1, s["endMs"] - s["startMs"])
         box = _crop_box(s["motion"], p, t_ms - s["startMs"], self.img.width)
-        art = self.img.resize((self.W, self.W), Image.BILINEAR, box=box)
+        art = self._art(t_ms).resize((self.W, self.W), Image.BILINEAR, box=box)
         out = self.bg.copy()
         out.paste(art, (0, ART_TOP))
         return out
@@ -176,13 +229,15 @@ def _blend(kind: str, a: np.ndarray, b: np.ndarray, q: float) -> np.ndarray:
 
 
 def render(sb: dict, images: list[Image.Image], audio_path: str | Path, out_path: str | Path,
-           thumbnail_path: str | Path | None = None) -> dict:
-    """mp4를 만들고 {durationMs, frames, bytes}를 돌려준다."""
+           thumbnail_path: str | Path | None = None, lips: list[dict] | None = None) -> dict:
+    """mp4를 만들고 {durationMs, frames, bytes}를 돌려준다. lips는 lipsync.plan()의 결과(장면 순서)."""
     scenes = sb["scenes"]
     if len(images) != len(scenes):
         raise ValueError(f"장면 {len(scenes)}개인데 그림은 {len(images)}장")
     W, H, fps = sb["size"]["width"], sb["size"]["height"], sb["size"]["fps"]
-    views = [_Scene(s, im, W, H) for s, im in zip(scenes, images)]
+    if lips is not None and len(lips) != len(scenes):
+        raise ValueError(f"장면 {len(scenes)}개인데 립싱크 계획은 {len(lips)}개")
+    views = [_Scene(s, im, W, H, lips[i] if lips else None, fps) for i, (s, im) in enumerate(zip(scenes, images))]
     subs = _Subtitles(sb, W, H)
     total = sb["durationMs"]
     n_frames = math.ceil(total / 1000 * fps)

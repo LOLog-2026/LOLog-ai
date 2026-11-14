@@ -1,0 +1,16 @@
+# 젯슨에서 바꿔 가며 잴 이야기 감지 모델 (jetson_model_sweep.sh 가 읽는다)
+# 칸은 탭으로 나눈다: 이름  출처  파일 고르기  서버에 더할 옵션(없으면 -)
+#   출처: HF 레포(org/name), 레포가 없거나 맞는 파일이 없으면 레포 이름으로 HF를 검색한다
+#         search:<검색어> 는 처음부터 검색, file:<경로> 는 이미 있는 파일
+#   파일 고르기: 쉼표로 나눈 glob, 앞에서부터 맞는 첫 파일(대소문자 무시, 나뉜 파일 -00001-of- 는 뺌)
+#   옵션: 생각(thinking) 모드가 있는 모델은 꺼야 출력 시간이 지금 서비스와 비교된다
+# 줄 앞에 # 을 붙이면 건너뛴다. 순서대로 잰다.
+qwen3-4b	file:/opt/lolog/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf	-	-
+qwen3.5-4b	unsloth/Qwen3.5-4B-GGUF	*Q4_K_M.gguf	--reasoning-budget 0 --chat-template-kwargs {"enable_thinking":false}
+kanana2-3b	search:kanana-2-3b-instruct gguf	*Q4_K_M.gguf,*q4_k_m.gguf,*Q4_0.gguf	-
+exaone4-1.2b	LGAI-EXAONE/EXAONE-4.0-1.2B-GGUF	*Q4_K_M.gguf	--reasoning-budget 0 --chat-template-kwargs {"enable_thinking":false}
+qwen3.5-2b	unsloth/Qwen3.5-2B-GGUF	*Q4_K_M.gguf	--reasoning-budget 0 --chat-template-kwargs {"enable_thinking":false}
+kanana2-1.3b	search:kanana-2-1.3b-instruct gguf	*Q4_K_M.gguf,*q4_k_m.gguf,*Q4_0.gguf	-
+hcx-seed-1.5b	search:HyperCLOVAX-SEED-Text-Instruct-1.5B gguf	*Q4_K_M.gguf,*q4_k_m.gguf,*Q4_0.gguf	-
+gemma4-e2b	ggml-org/gemma-4-E2B-it-GGUF	*Q4_K_M.gguf,*Q4_0.gguf,*Q8_0.gguf	-
+gemma4-e4b	ggml-org/gemma-4-E4B-it-GGUF	*Q4_K_M.gguf,*Q4_0.gguf	-

@@ -6,7 +6,7 @@
     errors = validate(sb, card)             # 빈 목록이면 통과
     timeline(sb, seconds)                   # 대사별 TTS 길이로 장면·대사의 startMs·endMs를 채운다
 
-표준 라이브러리만 쓴다.
+효과음·배경음 검색어 목록은 sounds.py에서 가져온다.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .sounds import BGM, SFX
 from .storyboard import HANGUL_RE, INTERNAL_NAME_RE, KEY_RE
 
 QUOTE_RE = re.compile(r"[\"“”‘’()]|(?<![A-Za-z])'|'(?![A-Za-z])")  # 따옴표(말한 내용)·괄호(이름) → 그림에 글자가 생겼다(#33). man's 같은 소유격은 통과
@@ -52,6 +53,8 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
         errs += _check_prompt(f"extras[{e.get('id')}].appearance", e.get("appearance", ""), sb)
     errs += _check_prompt("place.prompt", (sb.get("place") or {}).get("prompt", ""), sb)
 
+    if sb.get("bgm") is not None and sb.get("bgm") not in BGM:
+        errs.append("bgm은 정해진 배경음 값이나 null")
     scenes = sb.get("scenes") or []
     if not MIN_SCENES <= len(scenes) <= MAX_SCENES:
         errs.append(f"scenes는 {MIN_SCENES}~{MAX_SCENES}개여야 함 (지금 {len(scenes)}개)")
@@ -64,6 +67,8 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             errs.append(f"{where}.motion은 {MOTIONS} 중 하나")
         if s.get("transition") not in TRANSITIONS:
             errs.append(f"{where}.transition은 {TRANSITIONS} 중 하나")
+        if s.get("sfx") is not None and s.get("sfx") not in SFX:
+            errs.append(f"{where}.sfx는 정해진 효과음 값이나 null")
         for e in s.get("extras") or []:
             errs += _check_prompt(f"{where}.extras[{e.get('id')}].expression", e.get("expression") or "-", sb)
         errs += _check_prompt(f"{where}.scene", s.get("scene", ""), sb)
