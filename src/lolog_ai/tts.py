@@ -12,8 +12,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+from collections import OrderedDict
 from pathlib import Path
 
 MODEL = os.environ.get("TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-0.6B-Base")
@@ -22,6 +24,7 @@ DEFAULT_VOICE = "young-f-01"
 # 대사 한 줄(자막 한 장)이 이보다 길게 읽히면 뜻 없는 말이 이어진 것으로 본다(#27에서 20초짜리가 나왔다)
 MAX_SECONDS_PER_CHAR = 0.45
 MIN_SECONDS = 4.0
+USER_PROMPTS_MAX = 16  # 사용자 목소리(내 목소리) 참조를 몇 개까지 들고 있을지. 하나에 수 KB라 메모리는 거의 안 씀
 TOKENS_PER_SECOND = 12.5  # 12Hz 코덱. 읽기를 여기서 끊지 않으면 "ㅋㅋㅋ" 같은 글에서 끝없이 이어진다(3090에서 9분 넘게 멈춤)
 _UNSPEAKABLE = re.compile(r"[ㄱ-ㅎㅏ-ㅣ]+")  # ㅋㅋㅋ, ㅎㅎ, ㅠㅠ: 자막에는 두고 읽을 때만 뺀다
 
@@ -78,7 +81,8 @@ def _local(model_id: str) -> str:
 def pick_voice(char: dict, src_char: dict | None, available: set[str], seed: int) -> str:
     """콘티 인물 하나의 목소리(기본 화자 id). spec/video.md 6장.
 
-    1. source의 character.voice: 프로필 캐릭터에서 사용자가 고른 목소리(기본 화자 id)
+    1. source의 character.voice: 프로필 캐릭터에서 사용자가 고른 목소리(기본 화자 id).
+       `"self"`(내 목소리)는 여기서 고르지 않는다. 녹음을 받는 건 worker/video.py가 하고, 못 받으면 아래로 내려온다
     2. 기본 화자가 붙어 있으면(ref "default:young-f-02") 그 목소리
     3. 콘티의 gender·age로 그 묶음의 4명 중 하나. 프로필 캐릭터인데 목소리를 안 골랐으면(voice null) 회원 ID로
        골라서 그 사람은 어느 카드에서나 같은 목소리가 된다. 아니면 seed(카드 ID + 순번)로
@@ -114,6 +118,8 @@ class Tts:
         self.device = device
         self._model = None
         self._prompts: dict[str, object] = {}
+        # 사용자 목소리는 기본 화자와 따로 둔다. 키는 회원 ID + 녹음·문장 지문이라 다시 녹음하면 새로 만든다
+        self._user_prompts: OrderedDict[str, object] = OrderedDict()
 
     def voices(self) -> set[str]:
         return {p.stem for p in self.voices_dir.glob("*.wav")}
@@ -135,6 +141,7 @@ class Tts:
         import torch
         self._model = None
         self._prompts.clear()
+        self._user_prompts.clear()
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -148,9 +155,38 @@ class Tts:
                 ref_audio=str(wav), ref_text=GREETING, x_vector_only_mode=self.xvec_only)
         return self._prompts[voice]
 
+    def user_voice(self, user_id: int, wav, sr: int, ref_text: str) -> str:
+        """사용자 녹음(내 목소리)을 참조 음성으로 올리고 say()에 넘길 목소리 이름을 돌려준다.
+
+        이름은 `self:{회원 ID}:{녹음·문장 지문}`이라 사람끼리 섞이지 않고, 다시 녹음하면 새 참조가 된다.
+        wav는 float32 1차원(load_sample()로 고친 것), ref_text는 사용자가 읽은 문장이다.
+        """
+        import numpy as np
+
+        wav = np.asarray(wav, dtype=np.float32).reshape(-1)
+        digest = hashlib.sha1(wav.tobytes() + ref_text.encode()).hexdigest()[:12]
+        name = f"self:{int(user_id)}:{digest}"
+        if name in self._user_prompts:
+            self._user_prompts.move_to_end(name)
+            return name
+        self._user_prompts[name] = self.load().create_voice_clone_prompt(
+            ref_audio=(wav, int(sr)), ref_text=ref_text, x_vector_only_mode=self.xvec_only)
+        while len(self._user_prompts) > USER_PROMPTS_MAX:
+            self._user_prompts.popitem(last=False)
+        return name
+
+    def _any_prompt(self, voice: str):
+        if voice.startswith("self:"):
+            if voice not in self._user_prompts:
+                raise KeyError(f"사용자 목소리를 먼저 올려야 해요(user_voice): {voice}")
+            self._user_prompts.move_to_end(voice)
+            return self._user_prompts[voice]
+        return self._prompt(voice)
+
     def say(self, voice: str, text: str, seed: int = 0, tries: int = 3):
         """(소리 float32 1차원, 샘플레이트). 읽을 글자가 없으면 None.
 
+        voice는 기본 화자 id(`young-f-02`)나 user_voice()가 돌려준 이름(`self:42:…`).
         길이 한도의 1.5배에서 읽기를 끊고, 한도를 넘게 나오면 시드를 바꿔 다시 읽어 가장 짧은 것을 쓴다.
         """
         import torch
@@ -158,7 +194,7 @@ class Tts:
         text = speakable(text)
         if not text:
             return None
-        model, prompt = self.load(), self._prompt(voice)
+        model, prompt = self.load(), self._any_prompt(voice)
         limit = max(MIN_SECONDS, len(text) * MAX_SECONDS_PER_CHAR)
         best = None
         for k in range(tries):
