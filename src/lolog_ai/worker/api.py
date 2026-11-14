@@ -44,6 +44,10 @@ class InternalApi:
     def post_cards(self, recording_id: int, result: dict) -> None:
         self._json("POST", f"/internal/recordings/{recording_id}/cards", result)
 
+    def post_text_cards(self, text_id: int, result: dict) -> None:
+        """글 결과(카드 1장). 그사이 글·카드가 지워졌으면 404 TEXT_NOT_FOUND (texts.md 5장)."""
+        self._json("POST", f"/internal/texts/{text_id}/cards", result)
+
     def get_comic_source(self, comic_id: int) -> dict:
         return self._json("GET", f"/internal/comics/{comic_id}/source")
 

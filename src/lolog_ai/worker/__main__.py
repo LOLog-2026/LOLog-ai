@@ -24,9 +24,11 @@ from .api import ApiError, InternalApi
 from .detect import detect
 from .llm import Llm
 from .storyboard_gen import StoryboardInvalid
+from .text_card import text_card
 
 log = logging.getLogger("lolog_ai.worker")
-GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND", "VIDEO_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
+GONE_CODES = {"RECORDING_NOT_FOUND", "COMIC_NOT_FOUND", "CHARACTER_NOT_FOUND", "VIDEO_NOT_FOUND",
+              "TEXT_NOT_FOUND"}  # 작업이 지워짐: 다시 하지 않음
 FAIL_KEY = "lolog:worker:fail:{}"
 RETRY_DELAYS = [5, 30]  # 1번째, 2번째 실패 뒤 기다리는 초
 
@@ -77,7 +79,12 @@ class Worker:
     # ---------- 처리 ----------
 
     def run_job(self, msg: dict) -> None:
-        if self.cfg.role == "detect":
+        if self.cfg.role == "detect" and msg.get("kind") == "text":
+            # 직접 쓴 글·블로그 글(texts.md 5장): 이야기 찾기 없이 카드 한 장
+            result = text_card(msg, self.llm)
+            self.api.post_text_cards(msg["textId"], result)
+            log.info("job %s 글 카드 완료: text %s", msg["jobId"], msg["textId"])
+        elif self.cfg.role == "detect":
             result = detect(msg, self.llm)
             self.api.post_cards(msg["recordingId"], result)
             log.info("job %s 감지 완료: 카드 %d개, carryFromMs=%s",
