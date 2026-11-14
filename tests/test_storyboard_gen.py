@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+import io
+import urllib.error
+import urllib.request
+
+import pytest
+
 from lolog_ai import render
 from lolog_ai.storyboard import validate
+from lolog_ai.worker.llm import Llm, LlmError
 from lolog_ai.worker.storyboard_gen import assemble, make_storyboard
 
 SRC = {
@@ -82,3 +89,36 @@ class OnceLlm:
 def test_make_storyboard_passes_first_try():
     sb = make_storyboard(SRC, OnceLlm())
     assert len(sb["panels"]) == 4
+
+
+class FlakyLlm:
+    """첫 번째는 서버 형식 오류(500 → LlmError), 두 번째는 정상."""
+
+    def __init__(self, fails: int = 1):
+        self.fails = fails
+        self.calls = 0
+
+    def chat_json(self, system, user, schema, name, **kw):
+        self.calls += 1
+        if self.calls <= self.fails:
+            raise LlmError("LLM 서버 500: model produced output that does not match the expected format")
+        return RAW, {}
+
+
+def test_make_storyboard_retries_after_llm_error():
+    llm = FlakyLlm()
+    assert len(make_storyboard(SRC, llm)["panels"]) == 4
+    assert llm.calls == 2
+
+
+def test_make_storyboard_reraises_when_all_llm_errors():
+    with pytest.raises(LlmError):
+        make_storyboard(SRC, FlakyLlm(fails=3))
+
+
+def test_post_500_becomes_llm_error(monkeypatch):
+    def boom(req, timeout):
+        raise urllib.error.HTTPError(req.full_url, 500, "err", {}, io.BytesIO(b'{"error":"does not match"}'))
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    with pytest.raises(LlmError, match="500"):
+        Llm("http://x/v1")._post("/chat/completions", {})

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import time
+import urllib.error
 import urllib.request
 
 
@@ -25,8 +26,18 @@ class Llm:
                                      headers={"Content-Type": "application/json"})
         if self.api_key:
             req.add_header("Authorization", f"Bearer {self.api_key}")
-        with urllib.request.urlopen(req, timeout=self.timeout) as r:
-            return json.loads(r.read())
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            # llama-server는 모델 출력이 응답 형식 해석기와 안 맞으면 500을 준다
+            # ("model produced output that does not match the expected ... format", Qwen3.5에서 봄).
+            # 출력 문제라서 JSON 깨짐과 같이 LlmError로 올려, 부르는 쪽이 다시 묻거나 그 이야기만 버리게 한다.
+            # 503(모델 로드 중) 같은 다른 오류는 그대로 올려 작업 전체를 다시 시도하게 한다
+            if e.code == 500:
+                detail = e.read()[:300].decode("utf-8", "replace")
+                raise LlmError(f"LLM 서버 500: {detail}") from None
+            raise
 
     def wait_ready(self, timeout: float = 600) -> None:
         """서버가 모델을 다 올릴 때까지 기다린다(젯슨에서 1~2분)."""

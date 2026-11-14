@@ -18,7 +18,7 @@ import json
 import logging
 
 from ..storyboard import BEATS, MAX_TEXT, validate
-from .llm import Llm
+from .llm import Llm, LlmError
 
 log = logging.getLogger(__name__)
 
@@ -164,13 +164,21 @@ def make_storyboard(src: dict, llm: Llm) -> dict:
     schema = _schema(keys)
     user = card_text(src)
     errs: list[str] = []
+    last_llm_err: LlmError | None = None
     for attempt in (1, 2, 3):
-        msg = user if attempt == 1 else (
+        msg = user if not errs else (
             user + "\n\n앞에서 만든 콘티에 아래 문제가 있었다. 고쳐서 다시 만든다.\n- " + "\n- ".join(errs[:15]))
-        raw, stat = llm.chat_json(SYSTEM, msg, schema, "storyboard", temperature=0.4, max_tokens=3072)
+        try:
+            raw, stat = llm.chat_json(SYSTEM, msg, schema, "storyboard", temperature=0.4, max_tokens=3072)
+        except LlmError as e:  # 출력이 잘리거나 깨짐, 서버 형식 오류(500): 다음 번에 다시 묻는다
+            log.warning("comic %s 콘티 %d번째: LLM 오류 %s", src["comicId"], attempt, e)
+            last_llm_err = e
+            continue
         sb = assemble(raw, src)
         errs = validate(sb, src)
         log.info("comic %s 콘티 %d번째: 문제 %d개 %s", src["comicId"], attempt, len(errs), stat)
         if not errs:
             return sb
+    if not errs and last_llm_err:  # 세 번 다 LLM 오류: 예전처럼 작업을 다시 시도하게 그대로 올린다
+        raise last_llm_err
     raise StoryboardInvalid("콘티 검사 실패: " + json.dumps(errs[:5], ensure_ascii=False))
