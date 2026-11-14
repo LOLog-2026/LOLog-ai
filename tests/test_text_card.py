@@ -56,6 +56,16 @@ def test_card_shape():
     assert "장소: 마트" in llm.calls[0][1]
 
 
+def test_narration_goes_to_writer():
+    raw = {"kind": "웃김", "summary": "김치찌개", "lines": [
+        {"type": "speech", "speaker": "화자1", "text": "그냥 물 넣으면 안 돼?"},
+        {"type": "narration", "speaker": "화자2", "text": "엄마가 국자로 내 손등을 톡 쳤어"},
+        {"type": "speech", "speaker": "화자2", "text": "멸치 육수부터 내야지"},
+    ]}
+    card = text_card(MSG, FakeLlm(raw))["cards"][0]
+    assert [l["speaker"] for l in card["lines"]] == ["화자1", "화자1", "화자2"]
+
+
 def test_empty_lines_is_invalid():
     with pytest.raises(TextCardInvalid):
         text_card(MSG, FakeLlm({**RAW, "lines": [{"speaker": "화자1", "text": " "}]}))
