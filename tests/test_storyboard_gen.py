@@ -122,3 +122,16 @@ def test_post_500_becomes_llm_error(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", boom)
     with pytest.raises(LlmError, match="500"):
         Llm("http://x/v1")._post("/chat/completions", {})
+
+
+def test_long_dialogue_split_or_clipped():
+    long = "어제 엄마가 계단 올라갈 때 숨 안 차냐고 물어봤어"  # 28자
+    raw = {**RAW, "panels": [panel("buildup", "The woman sits.", [("화자1", "left")], [long]),
+                             panel("development", "The woman sits.", [("화자1", "left"), ("화자2", "right")],
+                                   ["짧은 말", long]),
+                             *RAW["panels"][2:]]}
+    sb = assemble(raw, SRC)
+    assert validate(sb, SRC) == []
+    p1, p2 = sb["panels"][:2]
+    assert len(p1["dialogue"]) == 2 and " ".join(d["text"] for d in p1["dialogue"]) == long  # 자리가 있으면 나눔
+    assert len(p2["dialogue"]) == 2 and len(p2["dialogue"][1]["text"]) <= 25                  # 자리가 없으면 자름

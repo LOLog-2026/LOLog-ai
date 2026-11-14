@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 
-from ..storyboard import BEATS, MAX_TEXT, validate
+from ..storyboard import BEATS, CROWDED_CAST, MAX_BUBBLES, MAX_BUBBLES_CROWDED, MAX_TEXT, validate
 from .llm import Llm, LlmError
 
 log = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ def card_text(src: dict) -> str:
 
 
 def assemble(raw: dict, src: dict) -> dict:
-    from .video_gen import add_dressed, clean_scene, drop_phantoms, fix_appearance
+    from .video_gen import add_dressed, clean_scene, drop_phantoms, fix_appearance, split_line
 
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -146,9 +146,36 @@ def assemble(raw: dict, src: dict) -> dict:
         if len(cast) < 2 or len(dialogue) < 2:
             add_dressed(sc, view)
         drop_phantoms(sc, view)
+        dialogue = fit_dialogue(dialogue, len(sc["cast"]), split_line)
         sb["panels"].append({"index": i + 1, "beat": p["beat"], "scene": sc["scene"],
                              "cast": sc["cast"], "dialogue": dialogue})
     return sb
+
+
+def clip_text(t: str, limit: int = MAX_TEXT) -> str:
+    """한도를 넘는 대사를 한도 안의 마지막 띄어쓰기에서 자른다. 띄어쓰기가 없으면 한도에서 자른다."""
+    if len(t) <= limit:
+        return t
+    i = t.rfind(" ", 0, limit + 1)
+    return (t[:i] if i >= limit // 2 else t[:limit]).rstrip(" ,")
+
+
+def fit_dialogue(dialogue: list[dict], n_cast: int, split_line) -> list[dict]:
+    """대사가 MAX_TEXT를 넘으면 코드가 맞춘다. Qwen3.5로 바꾼 뒤 만화 콘티 실패 대부분이 "대사 25자 초과"였다
+    (11-14 2호 측정 첫 6편 중 4편이 세 번 다 실패). 말풍선 자리가 남으면 띄어쓰기에서 둘로 나누고(같은 화자),
+    아니면 한도 안에서 자른다. 다시 묻지 않아 시간도 아낀다."""
+    cap = MAX_BUBBLES_CROWDED if n_cast >= CROWDED_CAST else MAX_BUBBLES
+    out: list[dict] = []
+    for i, d in enumerate(dialogue):
+        if len(d.get("text", "")) <= MAX_TEXT:
+            out.append(d)
+            continue
+        free = cap - len(out) - (len(dialogue) - i)  # 이 대사를 하나 더 나눠 넣을 자리
+        parts = split_line(d, MAX_TEXT) if free >= 1 else [d]
+        if len(parts) == 1:
+            parts = [{**d, "text": clip_text(d["text"])}]
+        out += parts
+    return out
 
 
 def _character(c: dict, names: dict, fixed: dict) -> dict:
