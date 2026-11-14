@@ -11,6 +11,7 @@ import json
 import logging
 import re
 
+from ..sounds import BGM, MAX_SFX, NONE, SFX, to_null
 from ..video_storyboard import (
     MAX_LINES,
     MAX_SCENES,
@@ -80,6 +81,12 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - zoom 웃음 포인트로 들어갈 때 / flash 충격·반전
 - 같은 효과만 계속 쓰지 않는다
 
+소리(sfx, bgm): 영상에 작게 섞이는 효과음과 배경음. 아래 값 중에서만 고른다
+- sfx는 장면마다 하나 또는 "none". 그 장면의 행동·반응에 딱 맞는 소리가 있을 때만 고르고, 영상 전체에 {MAX_SFX}개까지. 나머지는 "none"
+- bgm은 영상 전체 분위기 하나 또는 "none"
+- 효과음: {", ".join(f"{k}({v})" for k, v in SFX.items())}
+- 배경음: {", ".join(f"{k}({v})" for k, v in BGM.items())}
+
 장소(place)
 - text는 한국어 장소 이름. 카드에 장소가 있으면 그대로 쓴다. 없으면 이야기에서 정한다
 - prompt는 그 장소의 영어 배경 설명"""
@@ -111,8 +118,9 @@ def _schema(keys: list[str]) -> dict:
                 "required": ["speaker", "text", "sourceLineIds"]}},
             "motion": {"type": "string", "enum": MOTIONS},
             "transition": {"type": "string", "enum": TRANSITIONS},
+            "sfx": {"type": "string", "enum": [*SFX, NONE]},
         },
-        "required": ["flashback", "scene", "cast", "extras", "lines", "motion", "transition"],
+        "required": ["flashback", "scene", "cast", "extras", "lines", "motion", "transition", "sfx"],
     }
     return {
         "type": "object",
@@ -129,8 +137,9 @@ def _schema(keys: list[str]) -> dict:
                                                  "appearance": en},
                 "required": ["id", "appearance"]}},
             "scenes": {"type": "array", "minItems": MIN_SCENES, "maxItems": MAX_SCENES, "items": scene},
+            "bgm": {"type": "string", "enum": [*BGM, NONE]},
         },
-        "required": ["place", "characters", "extras", "scenes"],
+        "required": ["place", "characters", "extras", "scenes", "bgm"],
     }
 
 
@@ -353,6 +362,19 @@ def trim_lines(sb: dict, limit_s: float = TARGET_MAX_S) -> None:
             s["transition"] = "fade"
 
 
+def fix_sounds(sb: dict, bgm: str | None) -> None:
+    """효과음·배경음 값을 맞춘다. 목록에 없는 값은 지우고, 효과음은 앞에서부터 MAX_SFX개까지,
+    바로 앞 장면과 같은 효과음은 지운다(같은 소리가 연달아 나면 어색함). LLM이 넘쳐도 다시 묻지 않는다."""
+    sb["bgm"] = bgm if bgm in BGM else None
+    kept, prev = 0, None
+    for sc in sb["scenes"]:
+        v = sc.get("sfx")
+        if v not in SFX or v == prev or kept >= MAX_SFX:
+            v = None
+        sc["sfx"], prev = v, v
+        kept += v is not None
+
+
 def assemble(raw: dict, src: dict) -> dict:
     names = {sp["key"]: sp.get("name") for sp in src["speakers"]}
     fixed = fixed_looks(src)
@@ -379,7 +401,9 @@ def assemble(raw: dict, src: dict) -> dict:
                 cast = [c for c in cast if c["key"] not in listeners]
         sb["scenes"].append({"index": i + 1, "flashback": flashback, "scene": clean_scene(p["scene"]),
                              "cast": cast, "extras": _extras(p, sb["extras"], cast), "lines": lines,
-                             "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"]})
+                             "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"],
+                             "sfx": to_null(p.get("sfx"))})
+    fix_sounds(sb, raw.get("bgm"))
     for i, c in enumerate(sb["characters"]):
         if not c.get("ref"):  # 고른 그림의 외모 글은 그대로 둔다
             c["appearance"] = fix_appearance(c, i)

@@ -113,6 +113,15 @@ class InternalApi:
         """appearance는 백엔드가 저장해 두었다가 만화 source의 character.appearance로 돌려준다."""
         self._post_png(f"/internal/users/{user_id}/character/avatar", png, "avatar.png", {"appearance": appearance})
 
+    # ---------- 효과음·배경음 (LOLog-docs spec/sounds.md) ----------
+
+    def get_sounds(self, kind: str, query: str) -> list[dict]:
+        """그 검색어로 모은 소리 목록 [{ id, kind, durationMs, url(10분 서명 주소) }]. 없으면 빈 목록."""
+        from urllib.parse import urlencode
+
+        out = self._json("GET", "/internal/sounds?" + urlencode({"kind": kind, "query": query}))
+        return (out or {}).get("sounds") or []
+
     def fetch(self, url: str) -> bytes:
         """source의 imageUrl(서명 주소) 받기. 서명 주소라 내부 토큰을 붙이지 않는다."""
         try:
