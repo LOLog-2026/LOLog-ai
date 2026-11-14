@@ -40,9 +40,12 @@ def voice(msg: dict, api: InternalApi, llm: Llm, tts) -> None:
 
     have = tts.voices()
     src_chars = {sp["key"]: sp.get("character") for sp in src["speakers"]}
+    who = {}
     for i, c in enumerate(sb["characters"]):
-        c["voice"] = pick_voice(c, src_chars.get(c["key"]), have, seed=int(src["cardId"]) + i)
-    who = {c["key"]: c["voice"] for c in sb["characters"]}
+        src_char = src_chars.get(c["key"])
+        mine = _self_voice(src_char, api, tts)  # 내 목소리("self")면 그 사람 녹음, 못 받으면 None
+        c["voice"] = "self" if mine else pick_voice(c, src_char, have, seed=int(src["cardId"]) + i)
+        who[c["key"]] = mine or c["voice"]
 
     clips, sr = [], 24000
     for i, d in enumerate(all_lines(sb)):
@@ -63,7 +66,38 @@ def voice(msg: dict, api: InternalApi, llm: Llm, tts) -> None:
     api.post_video_storyboard(vid, sb)
     api.post_video_audio(vid, buf.getvalue())
     log.info("video %s 목소리: 장면 %d개, 대사 %d개, %.1f초 | 콘티 %.0f초, TTS %.0f초 | %s",
-             vid, len(sb["scenes"]), len(clips), total / 1000, t1 - t0, t2 - t1, sorted(set(who.values())))
+             vid, len(sb["scenes"]), len(clips), total / 1000, t1 - t0, t2 - t1,
+             sorted({v.rsplit(":", 1)[0] for v in who.values()}))  # 내 목소리는 지문을 빼고 self:회원ID만
+
+
+def _self_voice(src_char: dict | None, api: InternalApi, tts) -> str | None:
+    """source character의 voice가 "self"면 그 사람 녹음을 받아 TTS에 올리고 목소리 이름을 돌려준다.
+
+    백엔드는 내 목소리가 READY이고(친구 쇼츠면 동의 ③도) 그럴 때만 "self"와 voiceText를 보낸다(spec/video.md 6장).
+    그 사이 지웠거나(404 VOICE_CLONE_NOT_FOUND) 녹음이 검사를 못 넘으면 None → 기본 화자 목소리로 읽는다.
+    """
+    from .api import ApiError
+    from .voice_clone import SR, VoiceSampleInvalid, prepare
+
+    src_char = src_char or {}
+    if src_char.get("voice") != "self":
+        return None
+    kind, _, rid = (src_char.get("ref") or "").partition(":")
+    text = (src_char.get("voiceText") or "").strip()
+    if kind != "profile" or not rid.isdigit() or not text:
+        log.warning("내 목소리인데 ref·voiceText가 없어 기본 목소리로: ref=%s", src_char.get("ref"))
+        return None
+    try:
+        ref = prepare(api.get_voice_sample(int(rid)))
+    except ApiError as e:
+        if e.status == 404:
+            log.info("user %s 내 목소리가 없어져 기본 목소리로: %s", rid, e.code)
+            return None
+        raise
+    except VoiceSampleInvalid as e:
+        log.warning("user %s 내 목소리 녹음이 검사를 못 넘어 기본 목소리로: %s", rid, e.code)
+        return None
+    return tts.user_voice(int(rid), ref, SR, text)
 
 
 def video(msg: dict, api: InternalApi) -> None:
