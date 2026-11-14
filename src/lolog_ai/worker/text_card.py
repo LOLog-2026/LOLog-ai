@@ -37,6 +37,17 @@ TEXT_SYSTEM = f"""너는 사용자가 직접 쓴 글(일기, 일지, 기억나�
 
 대사(lines)
 - 글을 이야기에 나오는 사람들이 주고받는 대사로 바꾼다. 따옴표 안의 말이나 "~라고 했다" 같은 말은 그 말을 한 사람의 대사로 옮긴다
+- 줄마다 type을 먼저 정한다
+  - speech: 그 사람이 그 자리에서 직접 한 말. 본문의 따옴표 안 말이나 "~라고 했다"의 말 부분만 쓴다
+  - narration: 행동, 상황, 결과 설명(~했다, ~갔는데, ~해 줬다). 글쓴이(화자1)가 친구에게 들려주는 말투로 쓴다. 예: "엄마가 국자로 내 손등을 톡 쳤어"
+- 본문에 따옴표("…", '…', “…”)로 적힌 말은 하나도 빠짐없이 각각 말한 사람의 speech 줄로 쓴다. narration 줄 안에 따옴표로 남기지 않는다
+- 화자2, 화자3, 화자4의 줄은 모두 speech다. 그 사람이 본문에서 실제로 한 말만 쓰고, 말을 지어내지 않는다
+- narration은 언제나 화자1이다(코드도 화자1로 맞춘다)
+- 한 줄은 말풍선 하나, 목소리 하나가 된다
+  - 다른 사람의 말을 전하지 않는다("엄마가 ~하길래", "~라고 했어" 금지). 그 말은 말한 사람의 speech 줄로 따로 쓴다
+  - 두 사람의 말이나 말과 행동("불났냐? 뛰어왔다")을 한 줄에 넣지 않는다
+- 형식 예시(이 예시의 문장은 출력에 쓰지 않는다): 본문 `친구가 "우산 챙겼어?" 하길래 "당연하지" 했는데 가방엔 양산이 들어 있었다`
+  → speech 화자2 "우산 챙겼어?" / speech 화자1 "당연하지" / narration 화자1 "근데 가방을 열어 보니 양산이었어"
 - 화자1은 글을 쓴 사람(나)이다. 다른 사람은 처음 말하는 순서대로 화자2, 화자3, 화자4로 붙이고 같은 사람은 끝까지 같은 이름을 쓴다. 최대 4명이다
 - 직접 말한 대사가 적으면 글쓴이(화자1)가 그 일을 친구에게 들려주듯 말하는 대사로 바꿔 상황 소개 → 전개 → 웃음 포인트 → 반응이 이어지게 한다
 - 대사 한 줄은 말풍선 하나에 들어갈 만큼 짧게(40자 안팎) 쓰고, 전체는 {MAX_LINES}줄 이하로 한다. 글이 길면 웃음 포인트와 그 앞뒤 흐름에 필요한 부분만 남긴다
@@ -51,10 +62,11 @@ TEXT_SCHEMA = {
         "lines": {"type": "array", "minItems": 1, "maxItems": MAX_LINES, "items": {
             "type": "object",
             "properties": {
+                "type": {"type": "string", "enum": ["speech", "narration"]},
                 "speaker": {"type": "string", "enum": SPEAKERS},
                 "text": {"type": "string", "minLength": 1},
             },
-            "required": ["speaker", "text"],
+            "required": ["type", "speaker", "text"],
         }},
     },
     "required": ["kind", "summary", "lines"],
@@ -86,6 +98,8 @@ def text_input(msg: dict) -> str:
 def to_text_card(raw: dict) -> dict:
     """LLM 결과 → TextCard(api TextDtos). 화자는 처음 나온 순서대로 화자1부터 다시 붙인다."""
     lines = [l for l in raw.get("lines") or [] if (l.get("text") or "").strip()][:MAX_LINES]
+    # 설명 줄은 글쓴이가 들려주는 말이다. LLM이 다른 화자에게 주는 일이 많아서(#49) 코드가 화자1로 맞춘다
+    lines = [{**l, "speaker": SPEAKERS[0]} if l.get("type") == "narration" else l for l in lines]
     order: list[str] = []
     for l in lines:
         if l["speaker"] not in order:
