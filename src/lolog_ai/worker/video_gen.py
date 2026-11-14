@@ -20,7 +20,7 @@ from ..video_storyboard import (
     TRANSITIONS,
     validate,
 )
-from .llm import Llm
+from .llm import Llm, LlmError
 from .storyboard_gen import StoryboardInvalid, _character, card_text, fixed_looks
 
 log = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ def clean_scene(text: str) -> str:
     LLM이 규칙을 자주 어겨서 다시 묻지 않고 코드가 지운다."""
     out = _QUOTED.sub("", text)
     out = re.sub(r"(,\s*|\band\s+|\bwith\s+)?(a\s+)?(bright\s+|colorful\s+|large\s+|small\s+)?(neon\s+)?"
-                 r"(signs?|signboards?|banners?|posters?|menus?|menu\s+boards?|white\s*boards?|black\s*boards?|"
+                 r"(signboards?|signs?|banners?|posters?|menu\s+boards?|menus?|white\s*boards?|black\s*boards?|"
                  r"chalk\s*boards?|bulletin\s+boards?|notice\s+boards?|calendars?)\b"
                  r"(\s+(filled|covered)\s+with\s+\w+(\s+\w+)?)?", "", out, flags=re.IGNORECASE)
     # 문자·메시지·채팅 화면을 그리라고 하면 말풍선과 가짜 글씨가 생겼다(#33 3차 s31 3장)
@@ -400,14 +400,22 @@ def make_video_storyboard(src: dict, llm: Llm) -> dict:
     schema = _schema(keys)
     user = card_text(src)
     errs: list[str] = []
+    last_llm_err: LlmError | None = None
     for attempt in (1, 2, 3):
-        msg = user if attempt == 1 else (
+        msg = user if not errs else (
             user + "\n\n앞에서 만든 콘티에 아래 문제가 있었다. 고쳐서 다시 만든다.\n- " + "\n- ".join(errs[:15]))
-        raw, stat = llm.chat_json(SYSTEM, msg, schema, "video_storyboard", temperature=0.4, max_tokens=4096)
+        try:
+            raw, stat = llm.chat_json(SYSTEM, msg, schema, "video_storyboard", temperature=0.4, max_tokens=4096)
+        except LlmError as e:  # 출력이 잘리거나 깨짐, 서버 형식 오류(500): 다음 번에 다시 묻는다
+            log.warning("video %s 콘티 %d번째: LLM 오류 %s", src.get("videoId"), attempt, e)
+            last_llm_err = e
+            continue
         sb = assemble(raw, src)
         errs = validate(sb, src)
         log.info("video %s 콘티 %d번째: 장면 %d개, 문제 %d개 %s", src.get("videoId"), attempt,
                  len(sb["scenes"]), len(errs), stat)
         if not errs:
             return sb
+    if not errs and last_llm_err:  # 세 번 다 LLM 오류: 예전처럼 작업을 다시 시도하게 그대로 올린다
+        raise last_llm_err
     raise StoryboardInvalid("영상 콘티 검사 실패: " + json.dumps(errs[:5], ensure_ascii=False))

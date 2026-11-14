@@ -52,9 +52,21 @@ def cast_text(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = froze
 
 
 def prompt(sb: dict, panel: dict, with_ref: set[str] | frozenset[str] = frozenset()) -> str:
+    """4컷만화 컷 하나. 사람 수와 사람을 장면 글보다 먼저 쓰고 "each appears only once"를 붙인다.
+    카드 영상(#33 4차)에서 같은 방식으로 장면 글의 "the man"과 인물 설명을 따로 읽어 같은 사람을 둘로 그리는 일이
+    줄었다(사람 수 맞는 장면 70.8% → 85.5%, 같은 회차의 다른 수정과 함께 잰 값)."""
+    n = len(panel["cast"])
+    count = "one person" if n == 1 else f"{['two', 'three', 'four'][min(n, 5) - 2]} people"
+    lead = "The panel shows" if _CROWD.search(panel["scene"]) else "The panel shows exactly"
+    who = f"{lead} {count}, each appears only once: {cast_text(sb, panel, with_ref).removeprefix('Characters ')}."
     keep = f" {KEEP_REF}" if ref_keys(panel, with_ref) else ""
-    return (f"{STYLE}. A single comic panel. Setting: {sb['place']['prompt']}. "
-            f"{panel['scene']} {cast_text(sb, panel, with_ref)}.{keep} {NO_TEXT}")
+    return (f"{STYLE}. A single comic panel. Setting: {sb['place']['prompt']}. {who} "
+            f"Scene: {panel['scene']}{keep} {NO_SIGN_TEXT_PANEL} {NO_TEXT}")
+
+
+# 간판·화면 글씨(#33 B1). 만화 컷은 원래 한 칸이라 "칸을 나누지 않음" 문장은 뺐다
+NO_SIGN_TEXT_PANEL = ("Any signs and storefronts are plain without writing. "
+                      "Phone and computer screens are blank or show only soft color.")
 
 
 _CROWD = re.compile(r"\b(crowd|students|people|group|coworkers|classmates|audience|passengers|customers)\b",
