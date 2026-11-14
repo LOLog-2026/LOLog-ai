@@ -107,11 +107,11 @@ def _image_pipe():
     return pipe
 
 
-def _render(pipe, embeds, seed: int, refs: list | None = None):
+def _render(pipe, embeds, seed: int, refs: list | None = None, size: int = PANEL):
     import torch
 
     with torch.inference_mode():
-        latents = pipe(image=refs or None, prompt_embeds=embeds, width=PANEL, height=PANEL,
+        latents = pipe(image=refs or None, prompt_embeds=embeds, width=size, height=size,
                        guidance_scale=1.0, num_inference_steps=STEPS, output_type="latent",
                        generator=torch.Generator("cuda").manual_seed(seed)).images
         img = pipe.vae.decode(latents.to(pipe.vae.dtype), return_dict=False)[0]
@@ -184,18 +184,51 @@ def draw_avatar(photo, appearance: str, seed: int) -> bytes:
 def draw_scenes(sb: dict, seed: int, refs: dict | None = None) -> list:
     """영상 콘티(video_storyboard) → 장면 그림(PIL, 768) 목록. 말풍선 없이 그대로 쓴다(#33).
     모델을 올리고 내리는 순서는 draw()와 같다."""
+    return draw_scenes_lips(sb, seed, refs, lips=False)[0]
+
+
+def draw_scenes_lips(sb: dict, seed: int, refs: dict | None = None, lips: bool = True) -> tuple[list, list | None]:
+    """장면 그림과 립싱크용 입모양 그림(lipsync.make_mouths 결과)을 함께 만든다.
+
+    입모양은 장면을 다 그린 뒤 같은 이미지 모델로, 말하는 얼굴 둘레(384)를 참조로 넣어 모양마다 다시 그린다.
+    글 인코더와 이미지 모델을 같이 올릴 수 없어서 입모양·눈 글도 장면 글과 함께 먼저 인코딩해 둔다.
+    입모양을 만들다 실패하면 None을 돌려주고 영상은 립싱크 없이 나간다.
+    """
+    from .. import lipsync
     from ..render import ref_keys, video_prompt
 
+    lips = lips and lipsync.ENABLED and lipsync.cv2 is not None
     refs = {k: _ref(v) for k, v in (refs or {}).items()}
     t0 = time.perf_counter()
-    embeds = encode([video_prompt(sb, s, set(refs)) for s in sb["scenes"]])
-    pipe = None
+    prompts = [video_prompt(sb, s, set(refs)) for s in sb["scenes"]]
+    # 입모양 5종(수염 난 인물이 있으면 수염 지키기 글 5종 더)과 감은 눈 1종
+    shapes = {**lipsync.mouth_prompts(sb), **lipsync.eye_prompts()} if lips else {}
+    embeds = encode(prompts + list(shapes.values()))
+    mouth_embeds = dict(zip(shapes, embeds[len(prompts):]))
+    pipe, mouths = None, None
     try:
         pipe = _image_pipe()
         out = [_render(pipe, embeds[i], seed + i, [refs[k] for k in ref_keys(s, set(refs))])
                for i, s in enumerate(sb["scenes"])]
+        t1 = time.perf_counter()
+        if lips:
+            n = [0]
+
+            def edit(crop, shape):
+                n[0] += 1
+                return _render(pipe, mouth_embeds[shape], seed, [crop], size=lipsync.MOUTH_SIZE)
+
+            try:
+                mouths = lipsync.make_mouths(sb, out, edit)
+                kinds = [v for m in mouths for src in m["source"].values() for v in src.values()]
+                log.info("입모양: 얼굴 %d개, 눈 %d개, FLUX %d장 그려 입 %d장 씀, 코드로 그린 입 %d장, %.0f초",
+                         sum(len(m["variants"]) for m in mouths), sum(len(m.get("eyes") or {}) for m in mouths), n[0],
+                         kinds.count("flux"), kinds.count("drawn"), time.perf_counter() - t1)
+            except Exception:  # 립싱크는 덤이다. 실패해도 영상은 만든다
+                log.exception("입모양 만들기 실패, 립싱크 없이 진행")
+                mouths = None
     finally:
-        embeds = pipe = None
+        embeds = mouth_embeds = pipe = None
         _free()
-    log.info("영상 장면 %d장 %.0f초, 참조 %d명", len(out), time.perf_counter() - t0, len(refs))
-    return out
+    log.info("영상 장면 %d장 %.0f초, 참조 %d명", len(out), t1 - t0, len(refs))
+    return out, mouths

@@ -1,7 +1,8 @@
 """카드 영상 작업 (#33, LOLog-docs spec/video.md). 한 영상이 Jetson 두 대를 차례로 거친다.
 
 3호 voice(msg)  lolog:video      source → 콘티(1호 LLM) → 대사 TTS → 시간표 → storyboard·audio 보내기
-2호 video(msg)  lolog:comic      storyboard·audio 받기 → 장면 그림(FLUX) → 움직임·전환·자막 → mp4 보내기
+2호 video(msg)  lolog:comic      storyboard·audio 받기 → 장면 그림(FLUX) → 말하는 입모양(FLUX, lipsync.py)
+                                 → 움직임·전환·자막·립싱크 → mp4 보내기
                 (kind "video")
 
 3호는 TTS 모델을 워커가 켜져 있는 동안 올려 둔다(올리는 데 약 20초, 메모리 약 3GB).
@@ -144,8 +145,9 @@ def _load_sound(data: bytes, sr: int):
 
 
 def video(msg: dict, api: InternalApi) -> None:
+    from .. import lipsync
     from ..video_render import render
-    from .draw import draw_scenes
+    from .draw import draw_scenes_lips
 
     vid = int(msg["videoId"])
     sb = api.get_video_storyboard(vid)
@@ -158,12 +160,18 @@ def video(msg: dict, api: InternalApi) -> None:
         if url:
             refs[c["key"]] = Image.open(io.BytesIO(api.fetch(url))).convert("RGB")
     t0 = time.perf_counter()
-    images = draw_scenes(sb, seed=vid, refs=refs)
+    images, mouths = draw_scenes_lips(sb, seed=vid, refs=refs)
+    lips = None
+    if mouths is not None:
+        try:
+            lips = lipsync.plan(sb, wav, mouths)
+        except Exception:  # 립싱크는 덤이다. 실패해도 영상은 만든다
+            log.exception("video %s 립싱크 계획 실패, 립싱크 없이 진행", vid)
     t1 = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="lolog-video-") as d:
         d = Path(d)
         (d / "audio.wav").write_bytes(wav)
-        res = render(sb, images, d / "audio.wav", d / "video.mp4", d / "thumb.jpg")
+        res = render(sb, images, d / "audio.wav", d / "video.mp4", d / "thumb.jpg", lips=lips)
         mp4, thumb = (d / "video.mp4").read_bytes(), (d / "thumb.jpg").read_bytes()
     t2 = time.perf_counter()
     api.post_video(vid, mp4, thumb, int(res["durationMs"]))
