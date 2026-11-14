@@ -44,6 +44,10 @@ class InternalApi:
     def post_cards(self, recording_id: int, result: dict) -> None:
         self._json("POST", f"/internal/recordings/{recording_id}/cards", result)
 
+    def post_text_cards(self, text_id: int, result: dict) -> None:
+        """글 결과(카드 1장). 그사이 글·카드가 지워졌으면 404 TEXT_NOT_FOUND (texts.md 5장)."""
+        self._json("POST", f"/internal/texts/{text_id}/cards", result)
+
     def get_comic_source(self, comic_id: int) -> dict:
         return self._json("GET", f"/internal/comics/{comic_id}/source")
 
@@ -62,7 +66,7 @@ class InternalApi:
         self._send("POST", path, body, f"multipart/form-data; boundary={boundary}")
 
     def _post_files(self, path: str, files: list[tuple[str, str, str, bytes]],
-                    fields: dict[str, str] | None = None) -> None:
+                    fields: dict[str, str] | None = None, method: str = "POST") -> None:
         """multipart. files: (파트 이름, 파일 이름, Content-Type, 바이트)"""
         boundary = uuid.uuid4().hex
         parts = [f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode()
@@ -70,7 +74,7 @@ class InternalApi:
         for name, filename, ctype, data in files:
             parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"; filename=\"{filename}\"\r\n"
                          f"Content-Type: {ctype}\r\n\r\n".encode() + data + b"\r\n")
-        self._send("POST", path, b"".join(parts) + f"--{boundary}--\r\n".encode(),
+        self._send(method, path, b"".join(parts) + f"--{boundary}--\r\n".encode(),
                    f"multipart/form-data; boundary={boundary}")
 
     # ---------- 카드 영상 (LOLog-docs spec/video.md 3장) ----------
@@ -108,6 +112,27 @@ class InternalApi:
     def post_character_avatar(self, user_id: int, png: bytes, appearance: str) -> None:
         """appearance는 백엔드가 저장해 두었다가 만화 source의 character.appearance로 돌려준다."""
         self._post_png(f"/internal/users/{user_id}/character/avatar", png, "avatar.png", {"appearance": appearance})
+
+    # ---------- 내 목소리 (LOLog-docs spec/characters.md "내 목소리") ----------
+
+    def get_voice_sample(self, user_id: int) -> bytes:
+        """원본 녹음(wav 또는 m4a). 만드는 중이거나 READY가 아니면 404 VOICE_CLONE_NOT_FOUND.
+        사용자 원본이라 서명 주소가 아니라 api가 직접 준다."""
+        return self._send("GET", f"/internal/users/{user_id}/voice-clone/sample")
+
+    def put_voice_preview(self, user_id: int, wav: bytes) -> None:
+        """미리 듣기. 받으면 READY와 푸시. 만드는 중이 아니면 404 VOICE_CLONE_NOT_FOUND."""
+        self._post_files(f"/internal/users/{user_id}/voice-clone/preview",
+                         [("file", "preview.wav", "audio/wav", wav)], method="PUT")
+
+    # ---------- 효과음·배경음 (LOLog-docs spec/sounds.md) ----------
+
+    def get_sounds(self, kind: str, query: str) -> list[dict]:
+        """그 검색어로 모은 소리 목록 [{ id, kind, durationMs, url(10분 서명 주소) }]. 없으면 빈 목록."""
+        from urllib.parse import urlencode
+
+        out = self._json("GET", "/internal/sounds?" + urlencode({"kind": kind, "query": query}))
+        return (out or {}).get("sounds") or []
 
     def fetch(self, url: str) -> bytes:
         """source의 imageUrl(서명 주소) 받기. 서명 주소라 내부 토큰을 붙이지 않는다."""
