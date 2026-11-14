@@ -73,7 +73,7 @@ class RecLlm(Llm):
             body = {**body, "seed": self.rng.randrange(1, 2**31)}
         return super()._post(path, body)
 
-    def chat_json(self, system, user, schema, name, temperature=None, max_tokens=2048):
+    def chat_json(self, system, user, schema, name, temperature=None, max_tokens=2048, **kw):
         if name == "speakers" and self.skip_speakers:  # 이야기 찾기만 잴 때: 화자는 부르지 않고 한 명으로 채움
             res = {"lines": [{"seg": first_seg(user), "speaker": "화자1", "text": "-"}]}
             stat = {"wall_s": 0.0, "prompt_tokens": 0, "completion_tokens": 0, "finish_reason": "stop"}
@@ -89,8 +89,13 @@ class RecLlm(Llm):
             res, stat = self._detect_chunked(system, user, schema, max_tokens)
         else:
             res, stat = super().chat_json(system, user, schema, name,
-                                          temperature=self.temperature, max_tokens=max_tokens)
-            self.calls.append({"name": name, "user": user, "result": res, "stat": stat})
+                                          temperature=self.temperature, max_tokens=max_tokens, **kw)
+            call = {"name": name, "user": user, "result": res, "stat": stat}
+            if name == "verify":  # 워커의 확인 단계(detect.verify). sweep_verify.py가 기준을 바꿔 다시 셀 수 있게 남긴다
+                lines = user.split("\n")
+                call.update(span=[first_seg(user), first_seg(lines[-1])], score=res.get("score"),
+                            escore=stat.get("escore"))
+            self.calls.append(call)
         if name == "detect" and self.verify:
             res = self._verify(user, res)
         return res, stat
@@ -238,6 +243,12 @@ class GoldLlm:
         self.calls: list[dict] = []
 
     def chat_json(self, system, user, schema, name, **kw):
+        if name == "verify":  # 정답 구간이 그대로 오므로 모두 남긴다
+            res = {"score": 5}
+            stat = {"wall_s": 0.0, "escore": 5.0}
+            self.calls.append({"name": name, "user": user, "result": res, "stat": stat, "score": 5, "escore": 5.0,
+                               "span": [first_seg(user), first_seg(user.splitlines()[-1])]})
+            return res, stat
         if name == "detect":
             res = {"stories": [{"kind": g["kind"], "summary": g["id"], "from": g["from"], "to": g["to"],
                                 "finished": True} for g in self.gold["stories"]]}

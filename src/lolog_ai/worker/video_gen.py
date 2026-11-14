@@ -142,7 +142,7 @@ def clean_scene(text: str) -> str:
     LLM이 규칙을 자주 어겨서 다시 묻지 않고 코드가 지운다."""
     out = _QUOTED.sub("", text)
     out = re.sub(r"(,\s*|\band\s+|\bwith\s+)?(a\s+)?(bright\s+|colorful\s+|large\s+|small\s+)?(neon\s+)?"
-                 r"(signs?|signboards?|banners?|posters?|menus?|menu\s+boards?|white\s*boards?|black\s*boards?|"
+                 r"(signboards?|signs?|banners?|posters?|menu\s+boards?|menus?|white\s*boards?|black\s*boards?|"
                  r"chalk\s*boards?|bulletin\s+boards?|notice\s+boards?|calendars?)\b"
                  r"(\s+(filled|covered)\s+with\s+\w+(\s+\w+)?)?", "", out, flags=re.IGNORECASE)
     # 문자·메시지·채팅 화면을 그리라고 하면 말풍선과 가짜 글씨가 생겼다(#33 3차 s31 3장)

@@ -490,3 +490,20 @@ bash jetson_model_sweep.sh                     # 측정. ONLY="qwen3.5-4b exaone
 3. 프롬프트: 짧은 예시 한 개(few-shot)
 4. 긴 입력 나누기: 1시간을 15분씩 겹쳐 잘라 따로 찾기 (long 세트가 short보다 많이 떨어질 때)
 5. 모델: EXAONE 4.0 1.2B, Qwen3-8B (llm-bench README 후보)
+
+## 서비스 반영 (2026-11-14)
+
+E절까지 고른 설정을 `src/lolog_ai/worker/detect.py`에 옮겼다: 종류 규칙(p-kind), 8분 창·3분 겹침(chunk8), 확인 단계(logprobs 기대 점수 3.9 이상, logprobs가 없으면 정수 점수 4 이상), 화자 JSON 문법(spk-json).
+창 길이와 확인 기준은 환경 변수 `DETECT_WINDOW_MIN`, `DETECT_VERIFY_MIN`으로 바꾸고, 0이면 그 단계를 끈다.
+
+- `variants.py`의 기준(base)이 이제 새 설정이다. 반영 전과 비교하려면 `--variant prev`(옛 종류 규칙, 창·확인·문법 끔), 확인 단계만 끄려면 `--variant no-verify`
+- 예전 p-*·chunk*·kc8* 변형은 반영 전 워커 기준이라 지금 base 위에 다시 얹지 않는다
+- 확인 기준 3.9는 Qwen3-4B에서 정한 값이다. Qwen3.5-4B에서 logprobs가 나오는지와 기준을 1호에서 다시 잰다
+
+```bash
+# 1호, lolog-worker@detect를 멈추고 (위 "젯슨에서 돌리기" 2)와 같음)
+# 확인 단계는 기준 0.1로 다 남기고 점수만 기록한 뒤, sweep_verify.py로 기준별 결과를 다시 센다
+DETECT_VERIFY_MIN=0.1 python3 run_eval.py --tag q35-base --runs 1 --sets sets/short-stt sets/long2-stt sets/nostory-stt 2>&1 | tee results-q35-base.log
+python3 sweep_verify.py --tag q35-base --field escore --cuts 3.5 3.7 3.8 3.9 4 4.2   # escore가 비어 있으면 --field score
+python3 run_eval.py --variant prev --tag q35-prev --runs 1 --sets sets/short-stt sets/long2-stt sets/nostory-stt 2>&1 | tee results-q35-prev.log
+```
