@@ -14,7 +14,7 @@ from lolog_ai.tts import Tts, pick_voice
 from lolog_ai.worker.api import ApiError
 from lolog_ai.worker.voice_clone import (
     PREVIEW_TEXT,
-    RECORD_SENTENCES,
+    RECORD_SENTENCE,
     SR,
     VoiceSampleInvalid,
     check_sample,
@@ -85,10 +85,8 @@ def test_check_rejects(wav, code):
 
 
 def test_sentences():
-    assert len(RECORD_SENTENCES) >= 1
-    for s in RECORD_SENTENCES:
-        assert 35 <= len(re.findall(r"[가-힣]", s)) <= 55  # 초당 5~7글자로 5~10초 안
-        assert s != PREVIEW_TEXT
+    assert 35 <= len(re.findall(r"[가-힣]", RECORD_SENTENCE)) <= 45  # 초당 5~7글자로 5~10초 안
+    assert RECORD_SENTENCE != PREVIEW_TEXT
 
 
 # ---------- 가짜 TTS·api ----------
@@ -136,11 +134,11 @@ class FakeApi:
 
 
 def test_user_voice_names_are_per_user_and_recording(tts):
-    a = tts.user_voice(1, speech(5.0), SR, RECORD_SENTENCES[0])
-    assert tts.user_voice(1, speech(5.0), SR, RECORD_SENTENCES[0]) == a  # 같은 녹음이면 다시 만들지 않음
+    a = tts.user_voice(1, speech(5.0), SR, RECORD_SENTENCE)
+    assert tts.user_voice(1, speech(5.0), SR, RECORD_SENTENCE) == a  # 같은 녹음이면 다시 만들지 않음
     assert len(tts._model.prompts) == 1
-    b = tts.user_voice(2, speech(5.0), SR, RECORD_SENTENCES[0])
-    c = tts.user_voice(1, speech(5.0, amp=0.2), SR, RECORD_SENTENCES[0])  # 다시 녹음
+    b = tts.user_voice(2, speech(5.0), SR, RECORD_SENTENCE)
+    c = tts.user_voice(1, speech(5.0, amp=0.2), SR, RECORD_SENTENCE)  # 다시 녹음
     assert len({a, b, c}) == 3 and a.startswith("self:1:") and b.startswith("self:2:")
     assert "self" not in tts.voices() and not any(v.startswith("self") for v in tts.voices())
 
@@ -152,10 +150,10 @@ def test_say_unknown_user_voice_fails(tts):
 
 def test_voice_clone_job_uploads_preview(tts):
     api = FakeApi({42: wav_bytes(speech(6.0, sr=48000), 48000)})
-    voice_clone({"jobId": 1, "kind": "voice_clone", "userId": 42, "text": RECORD_SENTENCES[1]}, api, tts)
+    voice_clone({"jobId": 1, "kind": "voice_clone", "userId": 42, "text": RECORD_SENTENCE}, api, tts)
     out, sr = sf.read(io.BytesIO(api.previews[42]))
     assert sr == SR and len(out) == SR
-    assert tts._model.prompts[0][1] == RECORD_SENTENCES[1]  # 읽은 문장이 ref_text
+    assert tts._model.prompts[0][1] == RECORD_SENTENCE  # 읽은 문장이 ref_text
     ref, ref_sr = tts._model.prompts[0][0]
     assert ref_sr == SR and abs(len(ref) / SR - 6.3) < 0.05
 
@@ -176,11 +174,11 @@ def test_self_voice_in_shorts(tts):
     from lolog_ai.worker.video import _self_voice
 
     api = FakeApi({42: wav_bytes(speech(6.0), SR)})
-    ch = {"ref": "profile:42", "voice": "self", "voiceText": RECORD_SENTENCES[2]}
+    ch = {"ref": "profile:42", "voice": "self", "voiceText": RECORD_SENTENCE}
     name = _self_voice(ch, api, tts)
     assert name.startswith("self:42:")
     assert tts.say(name, "아니 그걸 왜 지금 말해?") is not None
-    assert tts._model.last_prompt["text"] == RECORD_SENTENCES[2]
+    assert tts._model.last_prompt["text"] == RECORD_SENTENCE
 
 
 @pytest.mark.parametrize("ch, samples", [
