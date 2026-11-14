@@ -17,6 +17,7 @@ import logging
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 
 import numpy as np
@@ -66,14 +67,20 @@ def _resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
 
 
 def _ffmpeg_decode(data: bytes) -> np.ndarray:
+    """m4a 등을 ffmpeg로 푼다. 폰이 녹음한 m4a는 목차(moov)가 파일 끝에 있어 파이프(pipe:0)로 넣으면
+    읽지 못하고 빈 소리를 돌려준다(종료 코드는 0). 그래서 임시 파일에 써서 넘긴다."""
     exe = os.environ.get("FFMPEG") or shutil.which("ffmpeg")
     if not exe:
         raise RuntimeError("m4a 녹음을 풀려면 ffmpeg가 필요해요(3호에 apt install ffmpeg, 또는 환경 변수 FFMPEG)")
-    p = subprocess.run([exe, "-loglevel", "error", "-i", "pipe:0", "-ac", "1", "-ar", str(SR), "-f", "f32le",
-                        "pipe:1"], check=False, input=data, capture_output=True, timeout=60)
-    if p.returncode != 0:
+    with tempfile.NamedTemporaryFile(prefix="lolog-voice-") as f:
+        f.write(data)
+        f.flush()
+        p = subprocess.run([exe, "-nostdin", "-loglevel", "error", "-i", f.name, "-ac", "1", "-ar", str(SR),
+                            "-f", "f32le", "pipe:1"], check=False, capture_output=True, timeout=60)
+    out = np.frombuffer(p.stdout, dtype=np.float32).copy()
+    if p.returncode != 0 or not len(out):
         raise VoiceSampleInvalid("VOICE_UNREADABLE", p.stderr.decode(errors="replace")[-200:])
-    return np.frombuffer(p.stdout, dtype=np.float32).copy()
+    return out
 
 
 def load_sample(data: bytes) -> np.ndarray:

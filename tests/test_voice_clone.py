@@ -19,6 +19,7 @@ from lolog_ai.worker.voice_clone import (
     VoiceSampleInvalid,
     check_sample,
     load_sample,
+    prepare,
     voice_clone,
 )
 
@@ -56,6 +57,28 @@ def test_load_m4a_with_ffmpeg(tmp_path):
     subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(src), "-c:a", "aac", str(m4a)], check=True)
     out = load_sample(m4a.read_bytes())
     assert abs(len(out) / SR - 5.0) < 0.1
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg 없음")
+def test_load_phone_m4a_with_moov_at_end(tmp_path):
+    """폰 녹음처럼 목차(moov)가 소리(mdat) 뒤에 있고 소리가 64KB를 넘는 m4a.
+    파이프로 넘기면 ffmpeg가 앞으로 되돌아가지 못해 빈 소리가 나왔다(종료 코드 0, #47)."""
+    import subprocess
+
+    m4a = tmp_path / "phone.m4a"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "anoisesrc=d=7:a=0.3", "-ar", "48000",
+                    "-ac", "1", "-c:a", "aac", "-b:a", "96k", str(m4a)], check=True)
+    data = m4a.read_bytes()
+    assert data.find(b"moov") > data.find(b"mdat") > 0 and len(data) > 65536
+    out = load_sample(data)
+    assert abs(len(out) / SR - 7.0) < 0.1
+    assert len(prepare(data)) / SR > 6.5  # 검사도 통과
+
+
+def test_ffmpeg_empty_output_is_unreadable():
+    with pytest.raises(VoiceSampleInvalid) as e:
+        load_sample(b"\x00\x00\x00\x18ftypM4A not really audio")
+    assert e.value.code == "VOICE_UNREADABLE"
 
 
 def test_broken_file_is_unreadable():
