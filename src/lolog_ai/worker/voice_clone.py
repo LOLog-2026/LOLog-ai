@@ -74,20 +74,33 @@ def _resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
 
 def _ffmpeg_decode(data: bytes) -> np.ndarray:
     """m4a 등을 ffmpeg로 푼다. 폰이 녹음한 m4a는 목차(moov)가 파일 끝에 있어 파이프(pipe:0)로 넣으면
-    읽지 못하고 빈 소리를 돌려준다(종료 코드는 0). 그래서 임시 파일에 써서 넘긴다."""
+    읽지 못하고 빈 소리를 돌려준다(종료 코드는 0, #47). 그래서 임시 파일에 써서 넘긴다.
+
+    내보내기는 wav(16비트) 임시 파일로 한다. 3호 ffmpeg(Ubuntu n8.0.1)에는 f32le·s16le 같은 날 PCM
+    출력 형식(muxer)이 없어 `-f f32le`가 "not known"으로 실패했다(#57). wav는 어느 빌드에나 있고,
+    파이프가 아닌 파일로 써야 머리말의 길이 칸이 제대로 채워진다."""
     import numpy as np
+    import soundfile as sf
 
     exe = os.environ.get("FFMPEG") or shutil.which("ffmpeg")
     if not exe:
         raise RuntimeError("m4a 녹음을 풀려면 ffmpeg가 필요해요(3호에 apt install ffmpeg, 또는 환경 변수 FFMPEG)")
-    with tempfile.NamedTemporaryFile(prefix="lolog-voice-") as f:
-        f.write(data)
-        f.flush()
-        p = subprocess.run([exe, "-nostdin", "-loglevel", "error", "-i", f.name, "-ac", "1", "-ar", str(SR),
-                            "-f", "f32le", "pipe:1"], check=False, capture_output=True, timeout=60)
-    out = np.frombuffer(p.stdout, dtype=np.float32).copy()
-    if p.returncode != 0 or not len(out):
-        raise VoiceSampleInvalid("VOICE_UNREADABLE", p.stderr.decode(errors="replace")[-200:])
+    with tempfile.TemporaryDirectory(prefix="lolog-voice-") as d:
+        src, dst = os.path.join(d, "in"), os.path.join(d, "out.wav")
+        with open(src, "wb") as f:
+            f.write(data)
+        p = subprocess.run([exe, "-nostdin", "-loglevel", "error", "-i", src, "-vn", "-ac", "1", "-ar", str(SR),
+                            "-c:a", "pcm_s16le", "-f", "wav", dst], check=False, capture_output=True, timeout=60)
+        err = p.stderr.decode(errors="replace")[-200:]
+        if p.returncode != 0 or not os.path.exists(dst):
+            raise VoiceSampleInvalid("VOICE_UNREADABLE", err)
+        try:
+            out, _ = sf.read(dst, dtype="float32")
+        except Exception as e:  # noqa: BLE001 - ffmpeg가 머리말만 쓰고 끝난 경우 등
+            raise VoiceSampleInvalid("VOICE_UNREADABLE", type(e).__name__) from None
+    out = np.asarray(out, dtype=np.float32).reshape(-1)
+    if not len(out):
+        raise VoiceSampleInvalid("VOICE_UNREADABLE", err or "빈 소리")
     return out
 
 
