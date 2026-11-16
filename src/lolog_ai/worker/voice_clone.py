@@ -105,7 +105,8 @@ def _ffmpeg_decode(data: bytes) -> np.ndarray:
 
 
 def load_sample(data: bytes) -> np.ndarray:
-    """녹음 파일(wav·m4a 바이트) → 24kHz 모노 float32. wav는 soundfile로, 나머지(m4a)는 ffmpeg로 푼다."""
+    """녹음 파일(wav·m4a 바이트) → 24kHz 모노 float32. wav는 soundfile로, 나머지(m4a)는 PyAV로
+    푼다. PyAV가 없으면 ffmpeg 실행 파일로 푼다."""
     if not data:
         raise VoiceSampleInvalid("VOICE_UNREADABLE", "빈 파일")
     if data[:4] == b"RIFF":
@@ -116,7 +117,40 @@ def load_sample(data: bytes) -> np.ndarray:
         except Exception as e:  # noqa: BLE001 - 깨진 wav
             raise VoiceSampleInvalid("VOICE_UNREADABLE", type(e).__name__) from None
         return _resample(wav.mean(axis=1), int(sr), SR)
-    return _ffmpeg_decode(data)
+    try:
+        return _av_decode(data)
+    except ImportError:  # PyAV가 없으면 ffmpeg 실행 파일로
+        return _ffmpeg_decode(data)
+
+
+def _av_decode(data: bytes) -> np.ndarray:
+    """m4a 등을 PyAV(`pip install av`, ffmpeg 라이브러리가 함께 들어 있음)로 푼다.
+
+    3호 ffmpeg 실행 파일에는 AAC 디코더가 없어 폰 녹음을 열지 못했다(#57). PyAV는 자기 ffmpeg를
+    들고 다니므로 시스템 ffmpeg 빌드와 상관없이 AAC를 푼다. 바이트를 BytesIO로 넘기면 앞뒤로
+    오갈 수 있어 목차(moov)가 파일 끝에 있는 폰 m4a도 읽힌다(#47)."""
+    import av
+    import numpy as np
+
+    chunks = []
+    try:
+        with av.open(io.BytesIO(data)) as c:
+            if not c.streams.audio:
+                raise VoiceSampleInvalid("VOICE_UNREADABLE", "소리 트랙 없음")
+            rs = av.AudioResampler(format="flt", layout="mono", rate=SR)
+            for frame in c.decode(audio=0):
+                for f in rs.resample(frame):
+                    chunks.append(f.to_ndarray().reshape(-1))
+            for f in rs.resample(None):
+                chunks.append(f.to_ndarray().reshape(-1))
+    except VoiceSampleInvalid:
+        raise
+    except Exception as e:  # noqa: BLE001 - 깨진 파일·모르는 형식
+        raise VoiceSampleInvalid("VOICE_UNREADABLE", f"{type(e).__name__}: {e}"[-200:]) from None
+    out = np.concatenate(chunks).astype(np.float32) if chunks else np.zeros(0, np.float32)
+    if not len(out):
+        raise VoiceSampleInvalid("VOICE_UNREADABLE", "빈 소리")
+    return out
 
 
 def check_sample(wav: np.ndarray, sr: int = SR) -> np.ndarray:

@@ -287,9 +287,43 @@ def test_ffmpeg_decode_uses_wav_not_raw_muxer(tmp_path, monkeypatch):
         return real_run(cmd, *a, **k)
 
     monkeypatch.setattr(vc.subprocess, "run", spy)
-    out = load_sample(m4a.read_bytes())
+    out = vc._ffmpeg_decode(m4a.read_bytes())
     cmd = calls[0]
     assert cmd[cmd.index("-f") + 1] == "wav"
     assert "f32le" not in cmd and "s16le" not in cmd
     assert abs(len(out) / SR - 6.0) < 0.1
     assert 0.1 < float(np.abs(out).max()) <= 1.0  # lavfi sine 기본 크기는 1/8
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg 없음")
+def test_phone_m4a_decodes_without_ffmpeg_binary(tmp_path, monkeypatch):
+    """3호 ffmpeg에는 AAC 디코더가 없었다(#57). PyAV가 있으면 ffmpeg 실행 파일 없이 폰 m4a를 푼다."""
+    import subprocess
+
+    pytest.importorskip("av")
+    m4a = tmp_path / "phone.m4a"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "anoisesrc=d=7:a=0.3", "-ar", "44100",
+                    "-ac", "1", "-c:a", "aac", "-b:a", "96k", str(m4a)], check=True)
+    monkeypatch.setenv("FFMPEG", "/nonexistent/ffmpeg")
+    monkeypatch.setattr(shutil, "which", lambda *_a, **_k: None)
+    out = load_sample(m4a.read_bytes())
+    assert out.dtype == np.float32
+    assert abs(len(out) / SR - 7.0) < 0.1
+    assert len(prepare(m4a.read_bytes())) / SR > 6.5
+
+
+def test_falls_back_to_ffmpeg_without_pyav(monkeypatch):
+    import builtins
+
+    import lolog_ai.worker.voice_clone as vc
+
+    real_import = builtins.__import__
+
+    def no_av(name, *a, **k):
+        if name == "av":
+            raise ImportError("no av")
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", no_av)
+    monkeypatch.setattr(vc, "_ffmpeg_decode", lambda data: np.ones(3, np.float32))
+    assert len(load_sample(b"\x00\x00\x00\x18ftypM4A ")) == 3
