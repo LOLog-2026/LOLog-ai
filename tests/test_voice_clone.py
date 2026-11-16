@@ -267,3 +267,29 @@ def test_worker_imports_without_numpy():
     )
     p = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True)
     assert p.returncode == 0, p.stderr
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg 없음")
+def test_ffmpeg_decode_uses_wav_not_raw_muxer(tmp_path, monkeypatch):
+    """3호 ffmpeg에는 f32le·s16le 출력 형식이 없어 VOICE_UNREADABLE이 났다(#57). wav로만 내보내는지 본다."""
+    import subprocess
+
+    import lolog_ai.worker.voice_clone as vc
+
+    m4a = tmp_path / "a.m4a"
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "sine=f=220:d=6", "-ar", "44100",
+                    "-ac", "1", "-c:a", "aac", "-b:a", "96k", str(m4a)], check=True)
+    calls = []
+    real_run = vc.subprocess.run
+
+    def spy(cmd, *a, **k):
+        calls.append(cmd)
+        return real_run(cmd, *a, **k)
+
+    monkeypatch.setattr(vc.subprocess, "run", spy)
+    out = load_sample(m4a.read_bytes())
+    cmd = calls[0]
+    assert cmd[cmd.index("-f") + 1] == "wav"
+    assert "f32le" not in cmd and "s16le" not in cmd
+    assert abs(len(out) / SR - 6.0) < 0.1
+    assert 0.1 < float(np.abs(out).max()) <= 1.0  # lavfi sine 기본 크기는 1/8
