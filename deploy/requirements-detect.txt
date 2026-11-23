@@ -1,0 +1,4 @@
+# 1호 (--role detect): 이야기 찾기, 글 카드.
+# LLM은 HTTP로 부르므로(worker/llm.py) 워커가 쓰는 것은 이것뿐이다.
+# 1호에는 numpy·Pillow가 없다. 워커 진입점은 이 둘 없이 import돼야 한다(#25, #51).
+redis>=5.0

@@ -1,0 +1,22 @@
+# 2호 (--role comic): 4컷 만화, 프로필 캐릭터, 카드 영상의 그림·립싱크·굽기.
+# 코드의 import에서 뽑은 목록이다. 2호 venv(/opt/lolog/venv)의 pip freeze와 아직 맞춰 보지 않아서
+# 버전을 적지 않았다(#64). 2호를 다시 깔기 전에 freeze-jetson-2.txt를 받아 맞춘다.
+redis>=5.0
+numpy
+pillow
+
+# 그림: worker/draw.py (FLUX.2 klein nf4)
+torch
+transformers
+diffusers
+bitsandbytes   # nf4 양자화(BitsAndBytesConfig)
+accelerate     # import는 없지만 device_map="cuda"와 양자화 로딩에 필요하다
+peft           # FLUX_LORA를 줄 때만(load_lora_weights)
+
+# 말풍선 자리: faces.py (만화 얼굴 검출, CPU)
+onnxruntime
+
+# 립싱크: lipsync.py (FaceLandmarker). cv2(opencv)는 mediapipe가 같이 깐다
+mediapipe
+
+# pip로 깔지 않는 것: ffmpeg 실행 파일(영상 굽기, video_render.py. 환경 변수 FFMPEG 또는 PATH)

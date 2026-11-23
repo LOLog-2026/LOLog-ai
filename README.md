@@ -13,11 +13,18 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 의존성 설치 (.venv 생성)
 uv sync
 
+# 테스트
+uv run pytest
+
 # 실행
 uv run python scripts/<스크립트>.py
 ```
 
-패키지 추가는 `uv add <패키지>`, 개발용 도구는 `uv add --dev <패키지>`로 합니다. `pyproject.toml`과 `uv.lock`을 같이 커밋합니다.
+`uv sync`는 개발·테스트에 쓰는 것만 깝니다. 모델을 돌리는 패키지(torch, diffusers, qwen-tts 등)는 젯슨에만 깔고, 역할별 목록은 [deploy/](deploy/README.md)에 있습니다.
+
+패키지 추가는 `uv add <패키지>`, 개발용 도구는 `uv add --dev <패키지>`로 합니다. `pyproject.toml`과 `uv.lock`을 같이 커밋합니다. 워커 코드가 쓰는 패키지는 `deploy/requirements-<역할>.txt`에도 적습니다.
+
+PR을 올리면 GitHub Actions가 `uv sync --frozen` 뒤 `pytest`를 돌립니다.
 
 노트북에서 쓰려면 VS Code나 Jupyter에서 커널로 `.venv`를 고릅니다.
 
@@ -25,6 +32,7 @@ uv run python scripts/<스크립트>.py
 
 ```
 configs/       학습·추론 설정(yaml)
+deploy/        젯슨 역할별 패키지 목록
 data/          데이터 (git 제외, 출처만 data/README.md에 기록)
 experiments/   실험 기록, 실험 하나에 폴더 하나 (experiments/README.md 참고)
 notebooks/     탐색용 노트북

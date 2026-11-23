@@ -3,6 +3,8 @@
 #
 #   bash setup_tts_jetson.sh VOICES            # VOICES: 인사 클립 <id>.wav 24개가 든 폴더
 #
+# 묶음으로 받아 돌릴 때는 이 파일 옆에 tts.py와 requirements-video.txt(레포의 deploy/)를 같이 둔다.
+#
 # 만드는 것 (LOLOG_HOME 기본 /opt/lolog, 1·2호와 같은 자리)
 #   $LOLOG_HOME/tts-venv     qwen-tts 전용 venv. 워커 venv와 transformers 버전이 달라 따로 둔다
 #   $LOLOG_HOME/voices       인사 클립
@@ -19,6 +21,9 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 # tts.py: 묶음으로 받았으면 이 파일 옆, 레포에서 돌리면 src/lolog_ai
 TTS_PY=$HERE/tts.py; [ -f "$TTS_PY" ] || TTS_PY=$HERE/../src/lolog_ai/tts.py
 [ -f "$TTS_PY" ] || { echo "tts.py를 찾지 못했어요"; exit 1; }
+# 패키지 목록: 묶음으로 받았으면 이 파일 옆, 레포에서 돌리면 deploy/
+REQS=$HERE/requirements-video.txt; [ -f "$REQS" ] || REQS=$HERE/../deploy/requirements-video.txt
+[ -f "$REQS" ] || { echo "requirements-video.txt를 찾지 못했어요 (레포의 deploy/requirements-video.txt를 이 스크립트 옆에 두세요)"; exit 1; }
 
 n=$(find "$VOICES_SRC" -maxdepth 1 -name '*.wav' | wc -l)
 [ "$n" -ge 24 ] || { echo "인사 클립이 ${n}개예요(24개 필요): $VOICES_SRC"; exit 1; }
@@ -36,7 +41,7 @@ fi
 
 VENV=$LOLOG_HOME/tts-venv
 [ -x "$VENV/bin/python" ] || uv venv --python 3.12 "$VENV"
-uv pip install -p "$VENV" qwen-tts soundfile pillow redis   # redis: 3호 워커(--role video)도 이 venv로 돈다
+uv pip install -p "$VENV" -r "$REQS"
 
 mkdir -p "$LOLOG_HOME/voices" "$LOLOG_HOME/hf-cache"
 cp "$VOICES_SRC"/*.wav "$LOLOG_HOME/voices/"

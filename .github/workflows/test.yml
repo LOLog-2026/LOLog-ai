@@ -1,0 +1,22 @@
+# PR과 develop·main push마다 테스트를 돌린다(CLAUDE.md: 테스트는 통과해야 한다).
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      # 내 목소리 테스트 일부가 ffmpeg 실행 파일을 쓴다. 없으면 건너뛴다
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      # --frozen: uv.lock과 pyproject.toml이 어긋나 있으면 여기서 실패한다
+      - run: uv sync --frozen
+      - run: uv run pytest -q -rs
