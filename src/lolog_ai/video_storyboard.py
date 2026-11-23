@@ -15,7 +15,7 @@ import re
 from typing import Any
 
 from .sounds import BGM, SFX
-from .storyboard import HANGUL_RE, INTERNAL_NAME_RE, KEY_RE
+from .storyboard import HANGUL_RE, INTERNAL_NAME_RE, KEY_RE, _quoted
 
 QUOTE_RE = re.compile(r"[\"“”‘’()]|(?<![A-Za-z])'|'(?![A-Za-z])")  # 따옴표(말한 내용)·괄호(이름) → 그림에 글자가 생겼다(#33). man's 같은 소유격은 통과
 
@@ -34,7 +34,8 @@ SILENT_SCENE_MS = 2200  # 대사가 없는 장면
 TRANSITION_MS = 400  # 전환 효과 길이. 장면 경계를 가운데 두고 겹친다(소리 시간표는 바뀌지 않는다)
 
 
-def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str]:
+def validate(sb: dict[str, Any], card: dict[str, Any] | None = None, *, quote: bool = False) -> list[str]:
+    """quote는 storyboard.validate와 같다: 대사 원문·별명은 LLM에 다시 물을 때만 붙인다(TR-12, #62)."""
     errs: list[str] = []
     if sb.get("version") != 1:
         errs.append("version은 1이어야 함")
@@ -48,10 +49,10 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
     for c in chars:
         if not KEY_RE.match(str(c.get("key", ""))):
             errs.append(f"character key 형식 오류: {c.get('key')!r}")
-        errs += _check_prompt(f"characters[{c.get('key')}].appearance", c.get("appearance", ""), sb)
+        errs += _check_prompt(f"characters[{c.get('key')}].appearance", c.get("appearance", ""), sb, quote)
     for e in sb.get("extras") or []:
-        errs += _check_prompt(f"extras[{e.get('id')}].appearance", e.get("appearance", ""), sb)
-    errs += _check_prompt("place.prompt", (sb.get("place") or {}).get("prompt", ""), sb)
+        errs += _check_prompt(f"extras[{e.get('id')}].appearance", e.get("appearance", ""), sb, quote)
+    errs += _check_prompt("place.prompt", (sb.get("place") or {}).get("prompt", ""), sb, quote)
 
     if sb.get("bgm") is not None and sb.get("bgm") not in BGM:
         errs.append("bgm은 정해진 배경음 값이나 null")
@@ -70,8 +71,8 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
         if s.get("sfx") is not None and s.get("sfx") not in SFX:
             errs.append(f"{where}.sfx는 정해진 효과음 값이나 null")
         for e in s.get("extras") or []:
-            errs += _check_prompt(f"{where}.extras[{e.get('id')}].expression", e.get("expression") or "-", sb)
-        errs += _check_prompt(f"{where}.scene", s.get("scene", ""), sb)
+            errs += _check_prompt(f"{where}.extras[{e.get('id')}].expression", e.get("expression") or "-", sb, quote)
+        errs += _check_prompt(f"{where}.scene", s.get("scene", ""), sb, quote)
         errs += _check_gender(where, s, chars, sb.get("extras") or [])
         if QUOTE_RE.search(s.get("scene", "")):
             errs.append(f"{where}.scene에 따옴표나 괄호가 있음 (그림에 글자·말풍선이 생김. 말한 내용은 쓰지 않는다)")
@@ -113,9 +114,9 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             if not text.strip():
                 errs.append(f"{where}.lines[{j}] 대사가 비어 있음")
             if len(text) > MAX_TEXT:
-                errs.append(f"{where}.lines[{j}] 대사가 {len(text)}자 (최대 {MAX_TEXT}자): {text!r}")
+                errs.append(f"{where}.lines[{j}] 대사가 {len(text)}자 (최대 {MAX_TEXT}자){_quoted(text, quote)}")
             if INTERNAL_NAME_RE.search(text):
-                errs.append(f"{where}.lines[{j}] 대사에 내부 이름이 섞임: {text!r}")
+                errs.append(f"{where}.lines[{j}] 대사에 내부 이름이 섞임{_quoted(text, quote)}")
     if scenes and total_lines == 0:
         errs.append("대사가 하나도 없음")
 
@@ -185,7 +186,7 @@ CROWD_RE = re.compile(r"\b(crowd|students|people|group|coworkers|classmates|audi
                       re.IGNORECASE)
 
 
-def _check_prompt(where: str, text: str, sb: dict[str, Any]) -> list[str]:
+def _check_prompt(where: str, text: str, sb: dict[str, Any], quote: bool = False) -> list[str]:
     errs = []
     if not text.strip():
         return [f"{where}가 비어 있음"]
@@ -194,7 +195,7 @@ def _check_prompt(where: str, text: str, sb: dict[str, Any]) -> list[str]:
     for c in sb.get("characters") or []:
         name = c.get("name")
         if name and name in text:
-            errs.append(f"{where}에 별명 {name!r}이 들어감 (외모 설명으로 바꿔야 함)")
+            errs.append(f"{where}에 별명{_quoted(name, quote, sep=' ')}이 들어감 (외모 설명으로 바꿔야 함)")
     if HANGUL_RE.search(text):
         errs.append(f"{where}에 한글이 섞임 (그림 모델용 설명은 영어)")
     return errs

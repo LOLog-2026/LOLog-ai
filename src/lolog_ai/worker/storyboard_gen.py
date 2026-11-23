@@ -202,10 +202,11 @@ def make_storyboard(src: dict, llm: Llm) -> dict:
             last_llm_err = e
             continue
         sb = assemble(raw, src)
-        errs = validate(sb, src)
+        errs = validate(sb, src, quote=True)  # 원문은 LLM에 다시 물을 때만(TR-12)
         log.info("comic %s 콘티 %d번째: 문제 %d개 %s", src["comicId"], attempt, len(errs), stat)
         if not errs:
             return sb
     if not errs and last_llm_err:  # 세 번 다 LLM 오류: 예전처럼 작업을 다시 시도하게 그대로 올린다
         raise last_llm_err
-    raise StoryboardInvalid("콘티 검사 실패: " + json.dumps(errs[:5], ensure_ascii=False))
+    # 이 메시지는 워커 로그와 fail_reason으로 나간다. 대사 원문·별명이 없는 목록으로 다시 만든다(TR-12, #62)
+    raise StoryboardInvalid("콘티 검사 실패: " + json.dumps(validate(sb, src)[:5], ensure_ascii=False))
