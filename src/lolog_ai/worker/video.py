@@ -68,9 +68,10 @@ def voice(msg: dict, api: InternalApi, llm: Llm, tts) -> None:
 
     api.post_video_storyboard(vid, sb)
     api.post_video_audio(vid, buf.getvalue())
-    log.info("video %s 목소리: 장면 %d개, 대사 %d개, %.1f초 | 콘티 %.0f초, TTS %.0f초, 소리 %.1f초 | %s | 소리 %s",
+    log.info("video %s 목소리: 장면 %d개, 대사 %d개, %.1f초 | 콘티 %.0f초, TTS %.0f초, 소리 %.1f초 | %s | 소리 %d개",
              vid, len(sb["scenes"]), len(clips), total / 1000, t1 - t0, t2 - t1, time.perf_counter() - t3,
-             sorted({v.rsplit(":", 1)[0] for v in who.values()}), used)  # 내 목소리는 지문을 빼고 self:회원ID만
+             sorted({v.rsplit(":", 1)[0] for v in who.values()}), len(used))  # 내 목소리는 지문을 빼고 self:회원ID만
+    # 소리는 개수만: 설명 글은 LLM이 장면을 보고 쓴 글이라 로그에 남기지 않는다(TR-12)
 
 
 def _self_voice(src_char: dict | None, api: InternalApi, tts) -> str | None:
@@ -104,29 +105,32 @@ def _self_voice(src_char: dict | None, api: InternalApi, tts) -> str | None:
 
 
 def add_sounds(sb: dict, track, sr: int, api: InternalApi, seed: int):
-    """콘티의 sfx·bgm 검색어로 소리를 받아 섞는다(spec/sounds.md). (섞은 track, 쓴 검색어 목록).
+    """콘티의 sfx·bgm 설명 글로 소리를 찾아 섞는다(spec/sounds.md). (섞은 track, 소리를 넣은 설명 글 목록).
 
-    효과음·배경음은 있으면 좋은 것(P2)이라, 목록 API가 아직 없거나(404) 비었거나 받기·풀기에 실패하면
-    그 소리만 빼고 영상은 그대로 만든다. 같은 영상은 늘 같은 소리를 고른다(seed = videoId).
+    api 벡터 검색으로 가까운 소리 SEARCH_LIMIT개를 받아 하나를 고른다. 같은 영상은 늘 같은 소리(seed = videoId).
+    효과음·배경음은 있으면 좋은 것(P2)이라, search가 아직 없거나(404) 글 벡터 모델이 없거나(503) 맞는 소리가 없거나
+    받기·풀기에 실패하면 그 소리만 빼고 영상은 그대로 만든다.
     """
-    from ..sounds import mix, pick
+    from ..sounds import SEARCH_LIMIT, mix, pick
 
     want = [("SFX", sc["index"], sc["sfx"]) for sc in sb["scenes"] if sc.get("sfx")]
     if sb.get("bgm"):
         want.append(("BGM", 0, sb["bgm"]))
     sfx, bgm, used, cache = {}, None, [], {}
-    for kind, idx, query in want:
+    for kind, idx, text in want:
         try:
-            if (kind, query) not in cache:
-                item = pick(api.get_sounds(kind, query), seed + len(cache))
-                cache[(kind, query)] = None if item is None else _load_sound(api.fetch(item["url"]), sr)
-            wav = cache[(kind, query)]
+            if (kind, text) not in cache:
+                item = pick(api.search_sounds(kind, text, SEARCH_LIMIT), seed + len(cache))
+                if item is not None:  # 거리는 SOUND_MAX_DISTANCE를 다시 정할 때 본다(설명 글은 남기지 않음)
+                    log.info("소리 %s 장면 %s: id %s, 거리 %s", kind, idx, item.get("id"), item.get("distance"))
+                cache[(kind, text)] = None if item is None else _load_sound(api.fetch(item["url"]), sr)
+            wav = cache[(kind, text)]
         except Exception as e:  # noqa: BLE001 - 소리 하나 때문에 영상을 실패시키지 않는다
-            log.warning("소리 %s %s 못 받음, 빼고 만듦: %s", kind, query, type(e).__name__ + ": " + str(e)[:120])
-            cache[(kind, query)] = wav = None
+            log.warning("소리 %s 장면 %s 못 받음, 빼고 만듦: %s", kind, idx, type(e).__name__ + ": " + str(e)[:120])
+            cache[(kind, text)] = wav = None
         if wav is None:
             continue
-        used.append(query)
+        used.append(text)
         if kind == "BGM":
             bgm = wav
         else:
