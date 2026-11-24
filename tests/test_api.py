@@ -211,14 +211,17 @@ def test_fetch_http_error_becomes_api_error(monkeypatch):
     assert e.value.status == 403 and e.value.code is None
 
 
-def test_get_sounds_encodes_query_and_defaults_to_empty(server):
-    server.body = json.dumps({"sounds": [{"id": 1, "kind": "sfx", "durationMs": 800, "url": "u"}]}).encode()
+def test_search_sounds_posts_text_and_defaults_to_empty(server):
+    server.body = json.dumps({"sounds": [{"id": 1, "kind": "SFX", "durationMs": 800, "distance": 0.31,
+                                          "url": "u"}]}).encode()
     api = InternalApi(BASE, TOKEN)
-    assert api.get_sounds("sfx", "door slam&x")[0]["id"] == 1
-    assert server.last.full_url == f"{BASE}/internal/sounds?kind=sfx&query=door+slam%26x"
-    for body in (b"", b"{}", b'{"sounds": null}'):
+    assert api.search_sounds("SFX", "a door slamming shut", 3)[0]["id"] == 1
+    req = server.last
+    assert req.get_method() == "POST" and req.full_url == f"{BASE}/internal/sounds/search"
+    assert json.loads(req.data) == {"kind": "SFX", "text": "a door slamming shut", "limit": 3}
+    for body in (b"", b"{}", b'{"sounds": null}', b'{"sounds": []}'):  # 맞는 소리가 없으면 빈 배열(sounds.md)
         server.body = body
-        assert api.get_sounds("bgm", "bgm_comic") == []
+        assert api.search_sounds("BGM", "calm acoustic guitar music", 3) == []
 
 
 def test_fail_job_reason_is_cut_and_never_empty(server):

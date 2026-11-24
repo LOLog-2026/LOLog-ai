@@ -1,57 +1,54 @@
-"""쇼츠 효과음·배경음 (#45, LOLog-docs spec/sounds.md, FR-EXT-03).
+"""쇼츠 효과음·배경음 (#45, #76, LOLog-docs spec/sounds.md, FR-EXT-03).
 
-백엔드가 Freesound CC0 소리를 검색어 값마다 미리 모아 둔다. 영상 콘티가 장면마다 `sfx`, 영상 하나에 `bgm`을
-아래 검색어 값 중에서 고르면(없으면 null), 3호 워커가 그 검색어 소리 목록을 받아 하나를 골라 대사 wav에 섞는다.
+백엔드가 Freesound CC0 소리를 모아 CLAP 소리 벡터와 함께 둔다. 영상 콘티가 장면마다 `sfx`, 영상 하나에 `bgm`을
+들리는 소리를 설명하는 영어 한 줄로 쓰면(없으면 null), 3호 워커가 그 글로 api 벡터 검색(POST /internal/sounds/search)을
+불러 가까운 소리 몇 개 중 하나를 골라 대사 wav에 섞는다.
 
     mix(track, sr, sb, sfx={scene index: wav}, bgm=wav)   # 대사 위에 효과음을 얹고 배경음은 대사 동안 줄인다
 
-검색어 목록은 api(sound_library.query)와 같아야 한다. 바꿀 때는 docs sounds.md 3장도 같이 바꾼다.
+설명 글 규칙(아래 예시와 video_gen 프롬프트): CLAP은 소리를 사람이 설명한 영어 캡션("a door slams shut")으로 배워서,
+장면이 아니라 귀에 들리는 소리를 짧게 써야 가까운 소리가 나온다. 한 줄에 소리 하나, 부정("no music")은 모델이 못 알아듣고,
+이름·대사·숫자는 서버로 나가면 안 되고 검색에도 도움이 안 된다. 배경음은 모아 둔 30~60초 음악이라 음악으로 쓴다.
 numpy만 쓴다.
 """
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # numpy는 소리를 다룰 때만 불러, numpy가 없는 1·2호에서도 이 모듈을 import할 수 있게 한다
     import numpy as np
 
-# 효과음 검색어 → 콘티 LLM에게 보여 주는 뜻(언제 쓰는지)
-SFX = {
-    "door_slam": "문이 쾅 닫힘",
-    "footsteps": "발소리, 걸어오거나 뛰어감",
-    "laugh": "여럿이 웃는 소리",
-    "applause": "박수",
-    "phone_notify": "휴대폰 알림·진동",
-    "keyboard": "키보드 타자",
-    "dishes": "식기·컵 부딪힘, 식당·부엌",
-    "car_horn": "자동차 경적",
-    "rain": "비 오는 소리",
-    "wind": "바람 소리",
-    "dog": "개 짖는 소리",
-    "cat": "고양이 울음",
-    "pop": "뿅, 무언가 튀어나옴",
-    "fail": "실패·허탈(뿌우우)",
-    "success": "짠, 성공·뿌듯",
-    "rimshot": "바둠츠, 썰렁한 농담 뒤",
-    "whoosh": "휙, 빠르게 지나감·장면 전환",
-    "thud": "쿵, 넘어지거나 부딪힘",
-    "sigh": "한숨",
-    "gasp": "헉, 놀람",
-    "ding": "띵, 깨달음·생각남",
-    "cafe": "카페 웅성거림",
-    "classroom": "교실 웅성거림",
-    "crowd": "사람 많은 거리·행사장 소음",
-}
-# 배경음 검색어 → 분위기
-BGM = {
-    "bgm_upbeat": "신나고 밝음",
-    "bgm_calm": "잔잔함, 일상",
-    "bgm_tense": "긴장, 조마조마",
-    "bgm_sad": "슬픔, 짠함",
-    "bgm_comic": "코믹, 엉뚱함",
-}
-NONE = "none"  # 콘티 스키마에서 "고르지 않음". 콘티에는 null로 들어간다
+# 콘티 LLM에게 보여 주는 설명 글 예시. 지원이 모으는 갈래(생활 소리, 사람 반응, 동물, 탈것, 날씨, 장소 분위기,
+# 만화 효과음 / 음악 분위기, sounds.md 3장, lolog-api scripts/sound-queries.tsv)를 고루 담는다.
+# 이 중에서 고르라는 게 아니라 이런 모양으로 쓰라는 것
+SFX_EXAMPLES = [
+    "a door slamming shut", "footsteps running on a wooden floor", "a phone vibrating on a table",
+    "typing on a keyboard", "cups clinking in a kitchen", "a group of people laughing", "an audience clapping",
+    "a woman sighing", "a man gasping in surprise", "a dog barking", "a cat meowing", "a car horn honking",
+    "heavy rain falling", "strong wind blowing", "busy cafe chatter", "a noisy school classroom",
+    "a cartoon pop", "a cartoon boing", "a record scratch", "a sad trombone fail sound",
+    "a cheerful success jingle", "a rimshot drum hit", "a quick whoosh", "a heavy thud of something falling", "a bright bell ding",
+]
+BGM_EXAMPLES = [
+    "upbeat cheerful pop music", "calm acoustic guitar music", "tense suspense music with ticking",
+    "sad slow piano music", "playful comedy music with pizzicato strings",
+]
+NONE = "none"  # 콘티 스키마에서 "소리 없음". 콘티에는 null로 들어간다
+# 응답 형식(JSON 스키마)에 거는 모양. 한글·숫자·대문자 이름을 출력 단계에서 막는다. 1호 시험(11-24)에서
+# - 길이 제한이 없으면 "none, none, none, …"을 끝없이 이어 써 max_tokens에서 잘렸다 → 길이를 묶는다
+# - 쉼표·마침표를 허용하면 "a phone vibrating, then an alarm, a teacher sighs"처럼 소리를 나열했다 → 막는다
+DESC_PATTERN = r"^[a-z][a-z '-]{2,59}$"
+DESC_MAX = 60          # 설명 글 최대 글자 수(api는 200자까지 받지만 길면 검색이 흐려진다)
+DESC_MAX_WORDS = 12    # 프롬프트는 3~10단어. 조금 넘는 것은 받는다
+_DESC_RE = re.compile(DESC_PATTERN)
+_NEGATION = re.compile(r"\b(no|not|without|never)\b")
+# 소리를 이어 쓴 곳. 첫 소리만 남긴다("tense music then upbeat music" → "tense music")
+_NEXT_SOUND = re.compile(r",|;|\.|\s(?:and\s)?then\s|\sfollowed by\s|\swhile\s|\sand\s(?=(?:a|an|the|some)\s)")
+# 60자 제한에 걸려 끊긴 끝("... splashing on a")에 남는 말
+_DANGLING = re.compile(r"(?:\s(?:a|an|the|on|in|at|of|to|with|and|from|by|into|over))+$")
+SEARCH_LIMIT = 3       # search로 받는 후보 수. 그중 하나를 videoId로 고른다(같은 영상은 늘 같은 소리)
 
 MAX_SFX = 3            # 영상 하나에 효과음은 이만큼까지(많으면 시끄럽다)
 SFX_OFFSET_MS = 120    # 장면이 바뀌고 이만큼 뒤에 효과음
@@ -70,6 +67,25 @@ def _db(x: float) -> float:
 
 def to_null(v: str | None) -> str | None:
     return None if v in (None, "", NONE) else v
+
+
+def clean_desc(v: str | None) -> str | None:
+    """설명 글을 다듬는다(소문자, 공백 하나, 끝 문장 부호 빼기). 규칙에 안 맞으면 None(그 소리는 빼고 만든다)."""
+    if not isinstance(v, str):
+        return None
+    v = re.sub(r"\s+", " ", v.strip().lower())
+    v = _NEXT_SOUND.split(v, maxsplit=1)[0].strip(" .,")  # 한 줄에 소리 하나
+    head, sep, _ = v.partition(" and ")
+    if sep and len(head.split()) >= 3:  # 소리가 이미 3단어 넘게 적혔으면 "and" 뒤는 덧붙인 소리다(1호 시험 11-24)
+        v = head
+    v = _DANGLING.sub("", v)
+    return v if v != NONE and is_desc(v) else None
+
+
+def is_desc(v: str) -> bool:
+    """검사(video_storyboard.validate)와 clean_desc가 같이 쓴다."""
+    return (3 <= len(v) <= DESC_MAX and bool(_DESC_RE.match(v)) and len(v.split()) <= DESC_MAX_WORDS
+            and not _NEGATION.search(v))
 
 
 def resample(wav: np.ndarray, sr: int, target: int) -> np.ndarray:
@@ -161,5 +177,5 @@ def mix(track: np.ndarray, sr: int, sb: dict, sfx: dict[int, np.ndarray] | None 
 
 
 def pick(sounds: list[dict], seed: int) -> dict | None:
-    """같은 검색어 소리 중 하나. seed(videoId 등)로 정해서 같은 영상은 늘 같은 소리."""
+    """search가 돌려준 후보 중 하나. seed(videoId 등)로 정해서 같은 영상은 늘 같은 소리."""
     return sounds[seed % len(sounds)] if sounds else None
