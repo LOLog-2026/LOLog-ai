@@ -29,10 +29,12 @@ INTERNAL_NAME_RE = re.compile(r"화자\s*\d|\bspeaker\s*[A-Z0-9]\b", re.IGNORECA
 HANGUL_RE = re.compile(r"[가-힣]")
 
 
-def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str]:
+def validate(sb: dict[str, Any], card: dict[str, Any] | None = None, *, quote: bool = False) -> list[str]:
     """문제 목록을 돌려준다. 빈 목록이면 통과.
 
     card를 주면 카드와의 일관성(화자 키, 별명 노출)도 본다. card는 GET /api/cards/{id} 모양.
+    quote=True면 문제가 된 대사 원문과 별명을 문구에 붙인다. LLM에 다시 물을 때만 쓴다. 기본 목록은
+    로그와 실패 사유(fail_reason)로 나가므로 대화 글을 넣지 않는다(TR-12, #62).
     """
     errs: list[str] = []
 
@@ -50,10 +52,10 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
     for c in chars:
         if not KEY_RE.match(str(c.get("key", ""))):
             errs.append(f"character key 형식 오류: {c.get('key')!r}")
-        errs += _check_prompt(f"characters[{c.get('key')}].appearance", c.get("appearance", ""), sb)
+        errs += _check_prompt(f"characters[{c.get('key')}].appearance", c.get("appearance", ""), sb, quote)
 
     place = sb.get("place") or {}
-    errs += _check_prompt("place.prompt", place.get("prompt", ""), sb)
+    errs += _check_prompt("place.prompt", place.get("prompt", ""), sb, quote)
 
     panels = sb.get("panels") or []
     if len(panels) != 4:
@@ -64,7 +66,7 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             errs.append(f"{where}.index는 {i + 1}이어야 함")
         if i < len(BEATS) and p.get("beat") != BEATS[i]:
             errs.append(f"{where}.beat는 {BEATS[i]}이어야 함")
-        errs += _check_prompt(f"{where}.scene", p.get("scene", ""), sb)
+        errs += _check_prompt(f"{where}.scene", p.get("scene", ""), sb, quote)
 
         cast = p.get("cast") or []
         cast_keys = [c.get("key") for c in cast]
@@ -90,9 +92,9 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
             if not text.strip():
                 errs.append(f"{where}.dialogue[{j}] 대사가 비어 있음")
             if len(text) > MAX_TEXT:
-                errs.append(f"{where}.dialogue[{j}] 대사가 {len(text)}자 (최대 {MAX_TEXT}자): {text!r}")
+                errs.append(f"{where}.dialogue[{j}] 대사가 {len(text)}자 (최대 {MAX_TEXT}자){_quoted(text, quote)}")
             if INTERNAL_NAME_RE.search(text):
-                errs.append(f"{where}.dialogue[{j}] 대사에 내부 이름이 섞임: {text!r}")
+                errs.append(f"{where}.dialogue[{j}] 대사에 내부 이름이 섞임{_quoted(text, quote)}")
 
     if card is not None:
         card_keys = {s.get("key") for s in card.get("speakers", [])}
@@ -102,7 +104,12 @@ def validate(sb: dict[str, Any], card: dict[str, Any] | None = None) -> list[str
     return errs
 
 
-def _check_prompt(where: str, text: str, sb: dict[str, Any]) -> list[str]:
+def _quoted(text: str, quote: bool, sep: str = ": ") -> str:
+    """quote일 때만 원문을 붙인다. validate의 quote 설명 참고."""
+    return f"{sep}{text!r}" if quote else ""
+
+
+def _check_prompt(where: str, text: str, sb: dict[str, Any], quote: bool = False) -> list[str]:
     """그림 모델용 설명(영어)에 내부 이름·별명·한글이 섞였는지 본다."""
     errs = []
     if not text.strip():
@@ -112,7 +119,7 @@ def _check_prompt(where: str, text: str, sb: dict[str, Any]) -> list[str]:
     for c in sb.get("characters") or []:
         name = c.get("name")
         if name and name in text:
-            errs.append(f"{where}에 별명 {name!r}이 들어감 (외모 설명으로 바꿔야 함)")
+            errs.append(f"{where}에 별명{_quoted(name, quote, sep=' ')}이 들어감 (외모 설명으로 바꿔야 함)")
     if HANGUL_RE.search(text):
         errs.append(f"{where}에 한글이 섞임 (그림 모델용 설명은 영어)")
     return errs
