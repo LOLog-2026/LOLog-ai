@@ -121,11 +121,30 @@ def test_fix_scene_splits_long_line_when_there_is_room():
     assert [d["text"] for d in sc["lines"]] == [HALF, HALF, "짧"]
 
 
-@pytest.mark.xfail(strict=True, reason="#72 버그: 대사가 이미 MAX_LINES개인데 긴 대사를 나눠서 마지막 대사가 잘려 사라짐")
-def test_fix_scene_never_drops_a_line():
-    sc = scene(cast=[("화자1", "left")], lines=[line(HALF + " " + HALF), line("둘째"), line("마지막")])
+@pytest.mark.parametrize("texts", [
+    [HALF + " " + HALF, "둘째", "마지막"],              # 첫 대사가 길고 자리가 없음(#74: 마지막 대사가 사라졌다)
+    ["첫째", HALF + " " + HALF, "마지막"],
+    [HALF + " " + HALF, HALF + " " + HALF, "마지막"],
+])
+def test_fix_scene_never_drops_a_line(texts):
+    # 자리가 없으면 나누지 않고 그대로 둔다. 긴 대사는 검사에 걸려 LLM에 다시 묻는다
+    sc = scene(cast=[("화자1", "left")], lines=[line(t) for t in texts])
     fix_scene(sc, MAX_TEXT, MAX_LINES)
-    assert "마지막" in [d["text"] for d in sc["lines"]]
+    assert [d["text"] for d in sc["lines"]] == texts
+
+
+def test_fix_scene_splits_only_up_to_max_lines():
+    sc = scene(cast=[("화자1", "left")], lines=[line(HALF + " " + HALF), line(HALF + " " + HALF)])
+    fix_scene(sc, MAX_TEXT, MAX_LINES)
+    assert [d["text"] for d in sc["lines"]] == [HALF, HALF, HALF + " " + HALF]  # 첫 대사만 나눌 자리가 있음
+
+
+def test_fix_scene_keeps_lines_over_max_as_is():
+    # LLM이 MAX_LINES보다 많이 쓰면(스키마가 막지만) 나누지도 자르지도 않는다. 검사가 잡는다
+    texts = ["하나", "둘", "셋", HALF + " " + HALF]
+    sc = scene(cast=[("화자1", "left")], lines=[line(t) for t in texts])
+    fix_scene(sc, MAX_TEXT, MAX_LINES)
+    assert [d["text"] for d in sc["lines"]] == texts
 
 
 # ---------- est_seconds·trim_lines: 영상이 길면 가운데 장면 대사 빼기 ----------
