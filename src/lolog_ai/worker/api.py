@@ -127,11 +127,10 @@ class InternalApi:
 
     # ---------- 효과음·배경음 (LOLog-docs spec/sounds.md) ----------
 
-    def get_sounds(self, kind: str, query: str) -> list[dict]:
-        """그 검색어로 모은 소리 목록 [{ id, kind, durationMs, url(10분 서명 주소) }]. 없으면 빈 목록."""
-        from urllib.parse import urlencode
-
-        out = self._json("GET", "/internal/sounds?" + urlencode({"kind": kind, "query": query}))
+    def search_sounds(self, kind: str, text: str, limit: int) -> list[dict]:
+        """설명 글과 가까운 소리(벡터 검색, 가까운 순) [{ id, kind, durationMs, distance, url(10분 서명 주소) }].
+        맞는 소리가 없으면 빈 목록. api가 글 벡터 모델을 못 읽으면 503 EMBEDDING_UNAVAILABLE."""
+        out = self._json("POST", "/internal/sounds/search", {"kind": kind, "text": text, "limit": limit})
         return (out or {}).get("sounds") or []
 
     def fetch(self, url: str) -> bytes:

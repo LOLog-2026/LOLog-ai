@@ -11,7 +11,7 @@ import json
 import logging
 import re
 
-from ..sounds import BGM, MAX_SFX, NONE, SFX, to_null
+from ..sounds import BGM_EXAMPLES, DESC_PATTERN, MAX_SFX, SFX_EXAMPLES, clean_desc
 from ..video_storyboard import (
     MAX_LINES,
     MAX_SCENES,
@@ -81,11 +81,15 @@ SYSTEM = f"""너는 대화 카드로 30초 안팎의 세로 영상(움직이는 
 - zoom 웃음 포인트로 들어갈 때 / flash 충격·반전
 - 같은 효과만 계속 쓰지 않는다
 
-소리(sfx, bgm): 영상에 작게 섞이는 효과음과 배경음. 아래 값 중에서만 고른다
-- sfx는 장면마다 하나 또는 "none". 그 장면의 행동·반응에 딱 맞는 소리가 있을 때만 고르고, 영상 전체에 {MAX_SFX}개까지. 나머지는 "none"
-- bgm은 영상 전체 분위기 하나 또는 "none"
-- 효과음: {", ".join(f"{k}({v})" for k, v in SFX.items())}
-- 배경음: {", ".join(f"{k}({v})" for k, v in BGM.items())}
+소리(sfx, bgm): 영상에 작게 섞이는 효과음과 배경음. 들리는 소리를 영어 한 줄로 쓰면 그 글과 가까운 소리를 찾아 넣는다
+- sfx는 장면마다 하나 또는 "none". 그 장면의 행동·반응에 딱 맞는 소리가 있을 때만 쓰고, 영상 전체에 {MAX_SFX}개까지. 나머지는 "none"
+- bgm은 영상 전체 분위기에 맞는 음악 하나 또는 "none". 분위기·악기·빠르기를 넣어 "... music"으로 쓴다
+- 귀에 들리는 소리만 쓴다. 소리를 내는 것과 그 동작을 쓴다(a door slamming shut). 장면, 감정, 생각, 그림은 쓰지 않는다
+- 영어 소문자 3~10단어. 한 줄에 소리 하나만 쓴다. 쉼표, "then", "and"로 여러 소리를 이어 쓰지 않는다. 가장 중요한 소리 하나를 고른다
+- "no", "without" 같은 부정을 쓰지 않는다. 소리가 없으면 그냥 "none"
+- 이름, 장소 이름, 대사 내용, 숫자를 쓰지 않는다
+- 효과음 예: {", ".join(SFX_EXAMPLES)}
+- 배경음 예: {", ".join(BGM_EXAMPLES)}
 
 장소(place)
 - text는 한국어 장소 이름. 카드에 장소가 있으면 그대로 쓴다. 없으면 이야기에서 정한다
@@ -96,6 +100,7 @@ def _schema(keys: list[str]) -> dict:
     s = {"type": "string"}
     en = {"type": "string", "pattern": "^[ -~]+$"}  # 그림 모델용 영어 설명: 출력 단계에서 한글을 막음
     key = {"type": "string", "enum": keys}
+    sound = {"type": "string", "pattern": DESC_PATTERN}  # 영어 소문자 설명 글 또는 "none"(sounds.py)
     scene = {
         "type": "object",
         "properties": {
@@ -118,7 +123,7 @@ def _schema(keys: list[str]) -> dict:
                 "required": ["speaker", "text", "sourceLineIds"]}},
             "motion": {"type": "string", "enum": MOTIONS},
             "transition": {"type": "string", "enum": TRANSITIONS},
-            "sfx": {"type": "string", "enum": [*SFX, NONE]},
+            "sfx": sound,
         },
         "required": ["flashback", "scene", "cast", "extras", "lines", "motion", "transition", "sfx"],
     }
@@ -137,7 +142,7 @@ def _schema(keys: list[str]) -> dict:
                                                  "appearance": en},
                 "required": ["id", "appearance"]}},
             "scenes": {"type": "array", "minItems": MIN_SCENES, "maxItems": MAX_SCENES, "items": scene},
-            "bgm": {"type": "string", "enum": [*BGM, NONE]},
+            "bgm": sound,
         },
         "required": ["place", "characters", "extras", "scenes", "bgm"],
     }
@@ -366,13 +371,14 @@ def trim_lines(sb: dict, limit_s: float = TARGET_MAX_S) -> None:
 
 
 def fix_sounds(sb: dict, bgm: str | None) -> None:
-    """효과음·배경음 값을 맞춘다. 목록에 없는 값은 지우고, 효과음은 앞에서부터 MAX_SFX개까지,
-    바로 앞 장면과 같은 효과음은 지운다(같은 소리가 연달아 나면 어색함). LLM이 넘쳐도 다시 묻지 않는다."""
-    sb["bgm"] = bgm if bgm in BGM else None
+    """효과음·배경음 설명 글을 맞춘다. 다듬고(clean_desc) 규칙에 안 맞으면 지우고, 효과음은 앞에서부터 MAX_SFX개까지,
+    바로 앞 장면과 같은 효과음은 지운다(같은 소리가 연달아 나면 어색함). 소리는 있으면 좋은 것(P2)이라
+    LLM이 규칙을 어겨도 다시 묻지 않고 그 소리만 뺀다."""
+    sb["bgm"] = clean_desc(bgm)
     kept, prev = 0, None
     for sc in sb["scenes"]:
-        v = sc.get("sfx")
-        if v not in SFX or v == prev or kept >= MAX_SFX:
+        v = clean_desc(sc.get("sfx"))
+        if v is None or v == prev or kept >= MAX_SFX:
             v = None
         sc["sfx"], prev = v, v
         kept += v is not None
@@ -405,7 +411,7 @@ def assemble(raw: dict, src: dict) -> dict:
         sb["scenes"].append({"index": i + 1, "flashback": flashback, "scene": clean_scene(p["scene"]),
                              "cast": cast, "extras": _extras(p, sb["extras"], cast), "lines": lines,
                              "motion": p["motion"], "transition": "fade" if i == 0 else p["transition"],
-                             "sfx": to_null(p.get("sfx"))})
+                             "sfx": p.get("sfx")})
     fix_sounds(sb, raw.get("bgm"))
     for i, c in enumerate(sb["characters"]):
         if not c.get("ref"):  # 고른 그림의 외모 글은 그대로 둔다
