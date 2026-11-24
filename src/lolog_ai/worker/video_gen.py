@@ -268,11 +268,14 @@ def split_line(d: dict, limit: int) -> list[dict]:
 
 def fix_scene(sc: dict, limit: int, max_lines: int) -> None:
     """LLM이 자주 틀리는 것을 코드가 맞춘다(#33 12개 카드 중 3개가 이것들로 실패).
-    대사가 긴 것은 나누고, 지금 장면에서 말하는 화자가 cast에 없으면 넣고, 자리가 겹치면 다시 정한다."""
+    대사가 긴 것은 나누고, 지금 장면에서 말하는 화자가 cast에 없으면 넣고, 자리가 겹치면 다시 정한다.
+    나누면 대사가 하나 늘어서, 나눈 뒤에도 max_lines를 넘지 않을 때만 나눈다. 자리가 없으면 긴 대사를 그대로 두어
+    검사에 걸려 LLM에 다시 묻는다(예전에는 넘친 마지막 대사를 잘라 버렸다, #74)."""
     lines = []
-    for d in sc["lines"]:
-        lines += split_line(d, limit) if len(sc["lines"]) + len(lines) < max_lines + 1 else [d]
-    sc["lines"] = lines[:max(max_lines, len(sc["lines"]))]
+    for j, d in enumerate(sc["lines"]):
+        rest = len(sc["lines"]) - j - 1  # 아직 안 본 대사
+        lines += split_line(d, limit) if len(lines) + 2 + rest <= max_lines else [d]
+    sc["lines"] = lines
     if not sc["flashback"]:
         keys = [c["key"] for c in sc["cast"]]
         for d in sc["lines"]:
